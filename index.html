@@ -63,14 +63,13 @@ tbody tr:hover{background:var(--bg2)}
 #tab-timer .boss-name{font-size:15px;font-weight:600}
 #tab-timer .boss-loc{color:var(--fg2);font-size:12px;white-space:nowrap;margin-top:3px}
 #tab-timer .spawn-time{font-size:13px}
-#tab-timer .cd{text-align:right;white-space:nowrap;font-weight:600}
-#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px}
+#tab-timer .cd{text-align:right;white-space:nowrap;font-weight:400}
+#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px;font-weight:400}
 #tab-timer .cd-value.green{color:var(--alive)}
 #tab-timer .cd-value.orange{color:var(--soon)}
-#tab-timer .cd-value.now{color:var(--now);font-weight:800}
-#tab-timer .cd-value.expired{color:var(--crit);font-weight:800}
-#tab-timer tr.row-spawned{background:rgba(155,233,168,.07)}
-#tab-timer tr.row-spawned .boss-name{color:var(--now)}
+#tab-timer .cd-value.now{color:var(--now);font-weight:700}
+#tab-timer .cd-value.expired{color:var(--crit);font-weight:400}
+
 
 .boss-name{font-weight:500}
 .boss-loc{font-size:11px;color:var(--fg2);margin-top:1px}
@@ -154,7 +153,6 @@ tbody tr:hover{background:var(--bg2)}
     <table>
       <thead><tr>
         <th>Boss</th>
-        <th>Location</th>
         <th>Next Spawn</th>
         <th class="r">Status / Countdown</th>
       </tr></thead>
