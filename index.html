@@ -57,18 +57,39 @@ thead th.r{text-align:right}
 tbody td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--bg2)}
-#tab-timer table{min-width:600px}
+#tab-timer table{width:100%;min-width:0;table-layout:fixed}
 #tab-timer thead th{padding:10px 12px;font-size:11px}
 #tab-timer tbody td{padding:10px 12px}
-#tab-timer .boss-name{font-size:15px;font-weight:600}
-#tab-timer .boss-loc{color:var(--fg2);font-size:12px;white-space:nowrap;margin-top:3px}
-#tab-timer .spawn-time{font-size:13px}
-#tab-timer .cd{text-align:right;white-space:nowrap;font-weight:400}
-#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px;font-weight:400}
+#tab-timer thead th:nth-child(1),#tab-timer tbody td:nth-child(1){width:38%}
+#tab-timer thead th:nth-child(2),#tab-timer tbody td:nth-child(2){width:34%}
+#tab-timer thead th:nth-child(3),#tab-timer tbody td:nth-child(3){width:28%}
+#tab-timer .boss-name{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+#tab-timer .boss-loc{color:var(--fg2);font-size:12px;white-space:normal;overflow-wrap:anywhere;margin-top:3px}
+#tab-timer .spawn-time{font-size:13px;white-space:normal;overflow-wrap:anywhere}
+#tab-timer .cd{text-align:left;white-space:normal;font-weight:400}
+#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px;font-weight:400;white-space:normal;overflow-wrap:anywhere}
 #tab-timer .cd-value.green{color:var(--alive)}
 #tab-timer .cd-value.orange{color:var(--soon)}
 #tab-timer .cd-value.now{color:var(--now);font-weight:700}
 #tab-timer .cd-value.expired{color:var(--crit);font-weight:400}
+@media(max-width:640px){
+  body{padding-left:7px;padding-right:7px}
+  #tab-timer thead th{padding:8px 6px;font-size:10px;letter-spacing:.02em}
+  #tab-timer tbody td{padding:9px 6px}
+  #tab-timer thead th:nth-child(1),#tab-timer tbody td:nth-child(1){width:36%}
+  #tab-timer thead th:nth-child(2),#tab-timer tbody td:nth-child(2){width:36%}
+  #tab-timer thead th:nth-child(3),#tab-timer tbody td:nth-child(3){width:28%}
+  #tab-timer .boss-name{font-size:13px}
+  #tab-timer .boss-loc{font-size:11px}
+  #tab-timer .spawn-time,#tab-timer .cd-value{font-size:11px}
+}
+@media(max-width:380px){
+  #tab-timer thead th{font-size:9px;padding:7px 4px}
+  #tab-timer tbody td{padding:8px 4px}
+  #tab-timer .boss-name{font-size:12px}
+  #tab-timer .boss-loc{font-size:10px}
+  #tab-timer .spawn-time,#tab-timer .cd-value{font-size:10px}
+}
 
 
 .boss-name{font-weight:500}
@@ -153,8 +174,8 @@ tbody tr:hover{background:var(--bg2)}
     <table>
       <thead><tr>
         <th>Boss</th>
+        <th>Status / Countdown</th>
         <th>Next Spawn</th>
-        <th class="r">Status / Countdown</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -464,8 +485,8 @@ function render(){
     const isRecentFixedSpawn=!isDyn && diff<=0 && diff>=-20*60*1000;
     return `<tr class="${rowCls(diff)}${isRecentFixedSpawn?' row-spawned':''}" data-t="${resp.getTime()}" data-dyn="${isDyn?'1':'0'}">
       <td><div class="boss-name">${pinIcon}${name}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
-      <td class="spawn-time">${fmtDate(resp)}</td>
       <td class="cd"><span class="cd-value ${countdownClass(diff)}">${countdownText(diff)}</span></td>
+      <td class="spawn-time">${fmtDate(resp)}</td>
     </tr>`;
   }).join('');
 }
