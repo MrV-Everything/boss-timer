@@ -10,7 +10,7 @@
 :root {
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;
   --fg:#e6edf3;--fg2:#8b949e;--accent:#58a6ff;
-  --crit:#ff4d4f;--soon:#ff9f0a;--alive:#3fb950;--now:#9be9a8;
+  --crit:#f85149;--soon:#d29922;--alive:#3fb950;
   --pin:#a5d6ff;
   font-size:14px;color-scheme:dark;
 }
@@ -22,7 +22,7 @@ body{margin:0;padding:0 12px 24px;background:var(--bg);color:var(--fg);font-fami
   position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);
   display:flex;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap;
 }
-.topbar h1{margin:0;font-size:15px;font-weight:600;flex:1}
+.brand{display:flex;flex-direction:column;gap:3px;flex:1;min-width:180px}.topbar h1{margin:0;font-size:15px;font-weight:600}.visitor-info{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--muted,#89929d);font-variant-numeric:tabular-nums}.visitor-clock{color:var(--fg2);font-weight:600}.visitor-country{white-space:nowrap}
 .search{
   background:var(--bg3);border:1px solid var(--border);color:var(--fg);
   padding:5px 10px;border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;
@@ -57,40 +57,6 @@ thead th.r{text-align:right}
 tbody td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--bg2)}
-#tab-timer table{width:100%;min-width:0;table-layout:fixed}
-#tab-timer thead th{padding:10px 12px;font-size:11px}
-#tab-timer tbody td{padding:10px 12px}
-#tab-timer thead th:nth-child(1),#tab-timer tbody td:nth-child(1){width:38%}
-#tab-timer thead th:nth-child(2),#tab-timer tbody td:nth-child(2){width:34%}
-#tab-timer thead th:nth-child(3),#tab-timer tbody td:nth-child(3){width:28%}
-#tab-timer .boss-name{font-size:15px;font-weight:600;overflow-wrap:anywhere}
-#tab-timer .boss-loc{color:var(--fg2);font-size:12px;white-space:normal;overflow-wrap:anywhere;margin-top:3px}
-#tab-timer .spawn-time{font-size:13px;white-space:normal;overflow-wrap:anywhere}
-#tab-timer .cd{text-align:left;white-space:normal;font-weight:400}
-#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px;font-weight:400;white-space:normal;overflow-wrap:anywhere}
-#tab-timer .cd-value.green{color:var(--alive)}
-#tab-timer .cd-value.orange{color:var(--soon)}
-#tab-timer .cd-value.now{color:var(--now);font-weight:700}
-#tab-timer .cd-value.expired{color:var(--crit);font-weight:400}
-@media(max-width:640px){
-  body{padding-left:7px;padding-right:7px}
-  #tab-timer thead th{padding:8px 6px;font-size:10px;letter-spacing:.02em}
-  #tab-timer tbody td{padding:9px 6px}
-  #tab-timer thead th:nth-child(1),#tab-timer tbody td:nth-child(1){width:36%}
-  #tab-timer thead th:nth-child(2),#tab-timer tbody td:nth-child(2){width:36%}
-  #tab-timer thead th:nth-child(3),#tab-timer tbody td:nth-child(3){width:28%}
-  #tab-timer .boss-name{font-size:13px}
-  #tab-timer .boss-loc{font-size:11px}
-  #tab-timer .spawn-time,#tab-timer .cd-value{font-size:11px}
-}
-@media(max-width:380px){
-  #tab-timer thead th{font-size:9px;padding:7px 4px}
-  #tab-timer tbody td{padding:8px 4px}
-  #tab-timer .boss-name{font-size:12px}
-  #tab-timer .boss-loc{font-size:10px}
-  #tab-timer .spawn-time,#tab-timer .cd-value{font-size:10px}
-}
-
 
 .boss-name{font-weight:500}
 .boss-loc{font-size:11px;color:var(--fg2);margin-top:1px}
@@ -100,15 +66,13 @@ tbody tr:hover{background:var(--bg2)}
 .spawn-time{font-size:12px;color:var(--fg2);white-space:nowrap}
 
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap}
-.alive   {background:rgba(63,185,80,.14);color:var(--alive)}
-.soon    {background:rgba(255,159,10,.14);color:var(--soon)}
-.crit    {background:rgba(255,77,79,.14);color:var(--crit)}
+.alive   {background:rgba(63,185,80,.12);color:var(--alive)}
+.soon    {background:rgba(210,153,34,.12);color:var(--soon)}
+.crit    {background:rgba(248,81,73,.12);color:var(--crit)}
 .sched   {background:rgba(139,148,158,.1);color:var(--fg2)}
-.expired {background:rgba(255,77,79,.14);color:var(--crit)}
-.row-crit .boss-name{color:var(--alive)}
+.expired {background:rgba(139,148,158,.08);color:var(--fg2)}
+.row-crit .boss-name{color:var(--crit)}
 .row-soon .boss-name{color:var(--soon)}
-.row-spawned .boss-name{color:var(--now);font-weight:700}
-.row-exp .boss-name{color:var(--crit)}
 .row-exp  {opacity:.5}
 
 .kill-btn{
@@ -156,7 +120,13 @@ tbody tr:hover{background:var(--bg2)}
 <body>
 
 <div class="topbar">
-  <h1>⚔️ Boss Timer ⚔️</h1>
+  <div class="brand">
+    <h1>⚔️ Boss Timer</h1>
+    <div class="visitor-info" aria-live="polite">
+      <span class="visitor-clock" id="visitorClock">🕒 --:--:--</span>
+      <span class="visitor-country" id="visitorCountry">🌐 Detecting country…</span>
+    </div>
+  </div>
   <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
   <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
   <button class="btn" id="filterAlive" title="Show alive">🟢 Alive</button>
@@ -176,8 +146,9 @@ tbody tr:hover{background:var(--bg2)}
     <table>
       <thead><tr>
         <th>Boss</th>
-        <th>Status / Countdown</th>
+        <th>Status</th>
         <th>Next Spawn</th>
+        <th class="r">Countdown</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -298,10 +269,10 @@ const DEFAULT_FIX = [
   {name:'Saphirus',   loc:'Crescent L.',   sch:[{d:0,h:17,m:0},{d:2,h:11,m:30}]},
   {name:'Neutro',     loc:'Desert.',       sch:[{d:2,h:19,m:0},{d:4,h:11,m:30}]},
   {name:'Thymele',    loc:'Twilight H.',   sch:[{d:1,h:19,m:0},{d:3,h:11,m:30}]},
-  {name:'Milavy',     loc:'TOT 3F',        sch:[{d:6,h:15,m:0}]},
+  {name:'Milavy',     loc:'TOT F3',        sch:[{d:6,h:15,m:0}]},
   {name:'Ringor',     loc:'BOT',           sch:[{d:6,h:17,m:0}]},
-  {name:'Roderick',   loc:'Garbana 1F',    sch:[{d:5,h:19,m:0}]},
-  {name:'Auraq',      loc:'Garbana 2F',    sch:[{d:3,h:21,m:0},{d:5,h:22,m:0}]},
+  {name:'Roderick',   loc:'Garbana F1',    sch:[{d:5,h:19,m:0}]},
+  {name:'Auraq',      loc:'Garbana F2',    sch:[{d:3,h:21,m:0},{d:5,h:22,m:0}]},
   {name:'Chaiflock',  loc:'Silvergrass',   sch:[{d:0,h:15,m:0}]},
   {name:'Benji',      loc:'Barbas',        sch:[{d:0,h:21,m:0}]},
   {name:'Motti',      loc:'Kransia',       sch:[{d:3,h:19,m:0},{d:6,h:19,m:0}]},
@@ -309,7 +280,7 @@ const DEFAULT_FIX = [
   {name:'Rakajeth',   loc:'Dracas',        sch:[{d:0,h:19,m:0},{d:2,h:22,m:0}]},
   {name:'Icaruthia',  loc:'Kransia',       sch:[{d:2,h:21,m:0},{d:5,h:21,m:0}]},
   {name:'Nevaeh',     loc:'Kransia',       sch:[{d:0,h:22,m:0}]},
-  {name:'Tumier',     loc:'Garbana 3F',    sch:[{d:0,h:19,m:0}]},
+  {name:'Tumier',     loc:'Garbana F3',    sch:[{d:0,h:19,m:0}]},
   {name:'Lucus',      loc:'Volcanca',      sch:[{d:6,h:22,m:0}]},
   {name:'Camalia',    loc:'Hidden Lab',    sch:[{d:4,h:21,m:0}]},
 ];
@@ -340,23 +311,12 @@ function fromHash(){
 
 // ── HELPERS ──────────────────────────────────────────────────────
 function nextFixed(d,h,m){
-  // Keep a fixed boss's just-spawned time visible for 20 minutes.
-  // After that grace period, show its next weekly schedule.
-  const now=new Date();
-  const today=new Date(now);
-  today.setHours(h,m,0,0);
-  const daysBack=(today.getDay()-d+7)%7;
-  const last=new Date(today);
-  last.setDate(last.getDate()-daysBack);
-  const age=now.getTime()-last.getTime();
-  const grace=20*60*1000;
-  if(age>=0 && age<=grace) return last;
-
-  const next=new Date(today);
-  let daysAhead=(d-next.getDay()+7)%7;
-  if(daysAhead===0 && next<=now) daysAhead=7;
-  next.setDate(next.getDate()+daysAhead);
-  return next;
+  const now=new Date(), r=new Date(now);
+  r.setHours(h,m,0,0);
+  let diff=(d-r.getDay()+7)%7;
+  if(diff===0 && r<=now) diff=7;
+  r.setDate(r.getDate()+diff);
+  return r;
 }
 
 function fmtDate(d){
@@ -380,34 +340,18 @@ function fmtAgo(ms){ // ms is negative diff (how long ago spawned)
   return `${s}s ago`;
 }
 
-function badgeHtml(diff, isDyn){
-  // Kept as a helper for compatibility; Timer now shows one colored countdown only.
-  if(diff<=-3600000) return 'expired';
-  if(diff<=0) return 'now';
-  if(diff<30*60*1000) return 'green';
-  if(diff<10*3600000) return 'orange';
-  return '';
-}
-
-function countdownText(diff){
-  if(diff<=-3600000) return '💀 Expired';
-  if(diff<=0) return `Spawn (${fmtAgo(diff)})`;
-  return fmtCD(diff);
+function badgeHtml(diff){
+  if(diff<=0 && diff>-3600000) return `<span class="badge alive">🟢 Alive (${fmtAgo(diff)})</span>`;
+  if(diff<=-3600000)            return `<span class="badge expired">💀 Expired</span>`;
+  if(diff<3600000)              return `<span class="badge crit">🔴 &lt;1h</span>`;
+  if(diff<21600000)             return `<span class="badge soon">🟡 &lt;6h</span>`;
+  return                               `<span class="badge sched">📌 Sched</span>`;
 }
 
 function rowCls(diff){
   if(diff<=-3600000) return 'row-exp';
-  if(diff<=0) return 'row-spawned';
-  if(diff<30*60*1000) return 'row-crit';
-  if(diff<10*3600000) return 'row-soon';
-  return '';
-}
-
-function countdownClass(diff){
-  if(diff<=-3600000) return 'expired';
-  if(diff<=0) return 'now';
-  if(diff<30*60*1000) return 'green';
-  if(diff<10*3600000) return 'orange';
+  if(diff<3600000)   return 'row-crit';
+  if(diff<21600000)  return 'row-soon';
   return '';
 }
 
@@ -478,17 +422,20 @@ function render(){
 
   const tbody=document.getElementById('tbody');
   if(!filtered.length){
-    tbody.innerHTML=`<tr class="empty"><td colspan="3">No bosses match — check filters or set kill times</td></tr>`;
+    tbody.innerHTML=`<tr class="empty"><td colspan="4">No bosses match — check filters or set kill times</td></tr>`;
     return;
   }
 
-  tbody.innerHTML=filtered.map(({name,loc,resp,diff,isDyn})=>{
+  tbody.innerHTML=filtered.map(({name,loc,resp,diff})=>{
+    const pin=resp.getTime()===resp.getTime()&&!S.dyn.find(d=>d.name===name)?'<span class="pin-badge">📌</span>':'';
+    // check if dyn
+    const isDyn=!!S.dyn.find(d=>d.name===name);
     const pinIcon=isDyn?'':'<span class="pin-badge">📌</span>';
-    const isRecentFixedSpawn=!isDyn && diff<=0 && diff>=-20*60*1000;
-    return `<tr class="${rowCls(diff)}${isRecentFixedSpawn?' row-spawned':''}" data-t="${resp.getTime()}" data-dyn="${isDyn?'1':'0'}">
+    return `<tr class="${rowCls(diff)}" data-t="${resp.getTime()}">
       <td><div class="boss-name">${pinIcon}${name}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
-      <td class="cd"><span class="cd-value ${countdownClass(diff)}">${countdownText(diff)}</span></td>
+      <td>${badgeHtml(diff)}</td>
       <td class="spawn-time">${fmtDate(resp)}</td>
+      <td class="cd">${fmtCD(diff)}</td>
     </tr>`;
   }).join('');
 }
@@ -616,137 +563,117 @@ document.getElementById('copyBtn').addEventListener('click',()=>{
 
 // ── TICKER ───────────────────────────────────────────────────────
 function tick(){
-  render();
+  let needRerender=false;
+  document.querySelectorAll('tr[data-t]').forEach(tr=>{
+    const t=+tr.dataset.t, diff=t-Date.now();
+    const cd=tr.querySelector('.cd'); if(cd) cd.textContent=fmtCD(diff);
+    // update alive badge text
+    const badge=tr.querySelector('.badge.alive');
+    if(badge) badge.textContent=`🟢 Alive (${fmtAgo(diff)})`;
+    // check if expired threshold just crossed → needs full re-render to move row
+    const wasExp=tr.classList.contains('row-exp');
+    const isExp=diff<=-3600000;
+    if(isExp!==wasExp) needRerender=true;
+    tr.classList.toggle('row-exp', isExp);
+    tr.classList.toggle('row-crit',!isExp&&diff>0&&diff<3600000);
+    tr.classList.toggle('row-soon',!isExp&&diff>0&&diff>=3600000&&diff<21600000);
+  });
+  if(needRerender) render();
   setTimeout(tick,1000);
 }
 
 // ── SHEET SYNC ───────────────────────────────────────────────────
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjsHW26dYFL_LTPXsXo03RwrG1AgD4RRnmmpSSifKzDchSm9rCvE3nmNSZqY1WUr4/exec';
-const AUTO_SYNC_MS = 5000;
-let sheetSyncInProgress = false;
-let lastSheetSync = 0;
 
-// Parse sheet timestamps. Apps Script returns "yyyy-MM-dd'T'HH:mm:ss"
-// in the spreadsheet timezone; this project is expected to use Philippine time.
-function parseSheetDate(value) {
-  if (value === null || value === undefined || value === '') return null;
-  const s = String(value).trim();
-  if (!s) return null;
+// Parse kill timestamp — supports both GAS formats:
+//   "Sun Oct 11 2026 10:37:00 GMT+0800 (Philippine Standard Time)"  ← new
+//   "Oct 11 - 12:37 AM"  ← old sheet format
+function parseSheetDate(str) {
+  if (!str) return null;
+  const s = String(str).trim();
 
-  // Parse ISO local date-time explicitly as local browser time.
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (iso) {
-    return new Date(
-      Number(iso[1]), Number(iso[2])-1, Number(iso[3]),
-      Number(iso[4]), Number(iso[5]), Number(iso[6] || 0), 0
-    ).getTime();
-  }
-
+  // try native Date parse first (handles full ISO / GAS toString format)
   const ts = Date.parse(s);
-  if (!Number.isNaN(ts)) return ts;
+  if (!isNaN(ts)) return ts;
 
-  // Fallback for older sheet values such as "Oct 11 - 10:37 AM".
+  // fallback: "Oct 11 - 12:37 AM"
   const m = s.match(/(\w+)\s+(\d+)\s*-\s*(\d+):(\d+)\s*(AM|PM)/i);
   if (!m) return null;
   const [,mon,day,hStr,minStr,ampm] = m;
   const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  const mo = months[mon];
-  if (mo === undefined) return null;
-  let h = Number(hStr), mi = Number(minStr);
+  const mo = months[mon]; if (mo === undefined) return null;
+  let h = parseInt(hStr), mi = parseInt(minStr);
   if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
   if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
   const now = new Date();
-  const d = new Date(now.getFullYear(), mo, Number(day), h, mi, 0, 0);
-  if (d.getTime() - now.getTime() > 7 * 86400000) d.setFullYear(d.getFullYear() - 1);
+  const d = new Date(now.getFullYear(), mo, parseInt(day), h, mi, 0, 0);
+  if (d - now > 7 * 86400000) d.setFullYear(d.getFullYear() - 1);
   return d.getTime();
 }
 
-function syncFromGAS(payload) {
-  // Supports the updated {success:true, rows:[...]} response and legacy arrays.
-  if (payload && payload.success === false) {
-    throw new Error(payload.error || 'Google Apps Script returned an error');
-  }
-  const rows = Array.isArray(payload) ? payload : payload && payload.rows;
-  if (!Array.isArray(rows)) throw new Error('Unexpected Sheet response format');
-
-  const newDyn = [];
-  const newKills = {};
-
-  rows.forEach(row => {
-    if (!row || !row.name) return;
-    const name = String(row.name).trim();
-    if (!name) return;
-
-    const parsedHours = Number(row.hours);
-    // Use the Sheet's +Hrs when present; otherwise preserve an existing/default value.
-    const oldBoss = S.dyn.find(b => b.name.toLowerCase() === name.toLowerCase());
-    const defaultBoss = DEFAULT_DYN.find(b => b.name.toLowerCase() === name.toLowerCase());
-    const hours = Number.isFinite(parsedHours) && row.hours !== '' && row.hours !== null
-      ? parsedHours
-      : (oldBoss ? oldBoss.hrs : (defaultBoss ? defaultBoss.hrs : 24));
-
-    // Prefer the location synced from Sheet. If an older Apps Script deployment
-    // does not return location yet, preserve the current/default location instead
-    // of replacing it with an empty string.
-    const sheetLocation = row.location == null ? '' : String(row.location).trim();
-    const location = sheetLocation || (oldBoss && oldBoss.loc) || (defaultBoss && defaultBoss.loc) || '';
-
-    newDyn.push({
-      name,
-      loc: location,
-      hrs: hours
-    });
-
-    const killedMs = parseSheetDate(row.killed);
-    if (killedMs !== null && Number.isFinite(killedMs)) newKills[name] = killedMs;
+function syncFromGAS(rows) {
+  let updated = 0, skipped = 0;
+  rows.forEach(({name, killed}) => {
+    const boss = S.dyn.find(b => b.name === name);
+    if (!boss) { skipped++; return; }
+    const ms = parseSheetDate(killed);
+    if (ms) { S.kills[name] = ms; updated++; }
   });
-
-  // The Google Sheet is the source of truth for Dynamic Bosses and their kill times.
-  // Fixed Bosses remain untouched.
-  S.dyn = newDyn;
-  S.kills = newKills;
-  save();
-  render();
-  if (document.getElementById('tab-dyn') && !document.getElementById('tab-dyn').hidden) renderDyn();
-
-  lastSheetSync = Date.now();
+  save(); render(); renderDyn();
   const status = document.getElementById('syncStatus');
-  status.textContent = `✓ Synced ${newDyn.length} bosses · ${new Date().toLocaleTimeString('en-PH')}`;
+  status.textContent = `✓ ${updated} updated, ${skipped} not matched`;
   status.style.color = 'var(--alive)';
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = false;
+  btn.textContent = '🔄 Sync from Sheet';
 }
 
-async function syncSheet({manual = false} = {}) {
-  if (sheetSyncInProgress) return;
-  sheetSyncInProgress = true;
+document.getElementById('syncBtn').addEventListener('click', async () => {
   const btn = document.getElementById('syncBtn');
   const status = document.getElementById('syncStatus');
-  if (manual) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Syncing…';
-    status.textContent = '';
-  }
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing…';
+  status.textContent = '';
 
+  // try direct fetch first (works if GAS CORS headers are set properly)
   try {
-    const res = await fetch(GAS_URL, {cache:'no-store', signal:AbortSignal.timeout(10000)});
+    const res = await fetch(GAS_URL, {signal: AbortSignal.timeout(8000)});
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const payload = await res.json();
-    syncFromGAS(payload);
-  } catch (err) {
-    if (manual || !lastSheetSync) {
-      status.textContent = `✗ Sync failed: ${err.message}`;
-      status.style.color = 'var(--crit)';
-    }
-    // Keep the last successfully synced data if the Sheet is temporarily unavailable.
-  } finally {
-    sheetSyncInProgress = false;
-    if (manual) {
-      btn.disabled = false;
-      btn.textContent = '🔄 Sync from Sheet';
-    }
+    const rows = await res.json();
+    syncFromGAS(rows);
+    return;
+  } catch(e) {
+    // direct fetch failed — try JSONP fallback
   }
-}
 
-document.getElementById('syncBtn').addEventListener('click', () => syncSheet({manual:true}));
+  // JSONP fallback: injects a <script> tag, GAS must support ?callback= param
+  try {
+    await new Promise((resolve, reject) => {
+      const cbName = '__gasSync_' + Date.now();
+      const timeout = setTimeout(() => {
+        delete window[cbName];
+        script.remove();
+        reject(new Error('timeout'));
+      }, 10000);
+      window[cbName] = (data) => {
+        clearTimeout(timeout);
+        delete window[cbName];
+        script.remove();
+        syncFromGAS(data);
+        resolve();
+      };
+      const script = document.createElement('script');
+      script.src = GAS_URL + '?callback=' + cbName;
+      script.onerror = () => { clearTimeout(timeout); delete window[cbName]; reject(new Error('script load failed')); };
+      document.head.appendChild(script);
+    });
+  } catch(e2) {
+    status.textContent = `✗ CORS blocked. Sa GAS mo: doGet → ContentService na may MimeType.JSON, i-redeploy as "Anyone". (${e2.message})`;
+    status.style.color = 'var(--crit)';
+    btn.disabled = false;
+    btn.textContent = '🔄 Sync from Sheet';
+  }
+});
 
 // ── ACCESS CONTROL (public timer + admin code) ────────────────────
 // IMPORTANT: This is a convenience gate only. Because this is a static
@@ -822,17 +749,59 @@ document.getElementById('adminLoginModal').addEventListener('click', e => {
 });
 
 
+// ── VISITOR LOCAL CLOCK + COUNTRY FLAG ───────────────────────────
+(function initVisitorInfo() {
+  const clockEl = document.getElementById('visitorClock');
+  const countryEl = document.getElementById('visitorCountry');
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local time';
+
+  function updateClock() {
+    const now = new Date();
+    const time = new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    }).format(now);
+    const date = new Intl.DateTimeFormat(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric'
+    }).format(now);
+    clockEl.textContent = `🕒 ${time} · ${date}`;
+    clockEl.title = `Your device time zone: ${timeZone}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  function flagEmoji(code) {
+    if (!code || !/^[A-Za-z]{2}$/.test(code)) return '🌐';
+    return [...code.toUpperCase()].map(c => String.fromCodePoint(127397 + c.charCodeAt(0))).join('');
+  }
+
+  // Country is resolved from the visitor's public IP by ipapi.co. The service
+  // receives the IP request; if unavailable, show timezone without guessing a country.
+  fetch('https://ipapi.co/json/', { cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error('Country lookup unavailable');
+      return response.json();
+    })
+    .then(data => {
+      if (data && data.country_code && data.country_name) {
+        countryEl.textContent = `${flagEmoji(data.country_code)} ${data.country_name}`;
+        countryEl.title = `Detected from public IP · Time zone: ${timeZone}`;
+      } else {
+        countryEl.textContent = `🌐 ${timeZone}`;
+        countryEl.title = 'Country could not be detected; showing device time zone.';
+      }
+    })
+    .catch(() => {
+      countryEl.textContent = `🌐 ${timeZone}`;
+      countryEl.title = 'Country lookup unavailable; showing device time zone instead.';
+    });
+})();
+
 // ── INIT ─────────────────────────────────────────────────────────
 load();
 if(fromHash()) save();
 applyAccessMode();
 render();
 tick();
-
-// Load the Sheet immediately, then refresh it every 5 seconds.
-// Countdown rendering continues independently every second.
-syncSheet();
-setInterval(() => syncSheet(), AUTO_SYNC_MS);
 </script>
 </body>
 </html>
