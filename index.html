@@ -10,7 +10,7 @@
 :root {
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;
   --fg:#e6edf3;--fg2:#8b949e;--accent:#58a6ff;
-  --crit:#f85149;--soon:#d29922;--alive:#3fb950;
+  --crit:#ff4d4f;--soon:#ff9f0a;--alive:#3fb950;--now:#9be9a8;
   --pin:#a5d6ff;
   font-size:14px;color-scheme:dark;
 }
@@ -57,6 +57,20 @@ thead th.r{text-align:right}
 tbody td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--bg2)}
+#tab-timer table{min-width:600px}
+#tab-timer thead th{padding:10px 12px;font-size:11px}
+#tab-timer tbody td{padding:10px 12px}
+#tab-timer .boss-name{font-size:15px;font-weight:600}
+#tab-timer .boss-loc{color:var(--fg2);font-size:12px;white-space:nowrap;margin-top:3px}
+#tab-timer .spawn-time{font-size:13px}
+#tab-timer .cd{text-align:right;white-space:nowrap;font-weight:600}
+#tab-timer .cd-value{display:inline-block;color:var(--fg);font-size:13px}
+#tab-timer .cd-value.green{color:var(--alive)}
+#tab-timer .cd-value.orange{color:var(--soon)}
+#tab-timer .cd-value.now{color:var(--now);font-weight:800}
+#tab-timer .cd-value.expired{color:var(--crit);font-weight:800}
+#tab-timer tr.row-spawned{background:rgba(155,233,168,.07)}
+#tab-timer tr.row-spawned .boss-name{color:var(--now)}
 
 .boss-name{font-weight:500}
 .boss-loc{font-size:11px;color:var(--fg2);margin-top:1px}
@@ -66,11 +80,11 @@ tbody tr:hover{background:var(--bg2)}
 .spawn-time{font-size:12px;color:var(--fg2);white-space:nowrap}
 
 .badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap}
-.alive   {background:rgba(63,185,80,.12);color:var(--alive)}
-.soon    {background:rgba(210,153,34,.12);color:var(--soon)}
-.crit    {background:rgba(248,81,73,.12);color:var(--crit)}
+.alive   {background:rgba(63,185,80,.14);color:var(--alive)}
+.soon    {background:rgba(255,159,10,.14);color:var(--soon)}
+.crit    {background:rgba(255,77,79,.14);color:var(--crit)}
 .sched   {background:rgba(139,148,158,.1);color:var(--fg2)}
-.expired {background:rgba(139,148,158,.08);color:var(--fg2)}
+.expired {background:rgba(255,77,79,.14);color:var(--crit)}
 .row-crit .boss-name{color:var(--crit)}
 .row-soon .boss-name{color:var(--soon)}
 .row-exp  {opacity:.5}
@@ -140,9 +154,9 @@ tbody tr:hover{background:var(--bg2)}
     <table>
       <thead><tr>
         <th>Boss</th>
-        <th>Status</th>
+        <th>Location</th>
         <th>Next Spawn</th>
-        <th class="r">Countdown</th>
+        <th class="r">Status / Countdown</th>
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
@@ -305,12 +319,23 @@ function fromHash(){
 
 // ── HELPERS ──────────────────────────────────────────────────────
 function nextFixed(d,h,m){
-  const now=new Date(), r=new Date(now);
-  r.setHours(h,m,0,0);
-  let diff=(d-r.getDay()+7)%7;
-  if(diff===0 && r<=now) diff=7;
-  r.setDate(r.getDate()+diff);
-  return r;
+  // Keep a fixed boss's just-spawned time visible for 20 minutes.
+  // After that grace period, show its next weekly schedule.
+  const now=new Date();
+  const today=new Date(now);
+  today.setHours(h,m,0,0);
+  const daysBack=(today.getDay()-d+7)%7;
+  const last=new Date(today);
+  last.setDate(last.getDate()-daysBack);
+  const age=now.getTime()-last.getTime();
+  const grace=20*60*1000;
+  if(age>=0 && age<=grace) return last;
+
+  const next=new Date(today);
+  let daysAhead=(d-next.getDay()+7)%7;
+  if(daysAhead===0 && next<=now) daysAhead=7;
+  next.setDate(next.getDate()+daysAhead);
+  return next;
 }
 
 function fmtDate(d){
@@ -334,18 +359,34 @@ function fmtAgo(ms){ // ms is negative diff (how long ago spawned)
   return `${s}s ago`;
 }
 
-function badgeHtml(diff){
-  if(diff<=0 && diff>-3600000) return `<span class="badge alive">🟢 Alive (${fmtAgo(diff)})</span>`;
-  if(diff<=-3600000)            return `<span class="badge expired">💀 Expired</span>`;
-  if(diff<3600000)              return `<span class="badge crit">🔴 &lt;1h</span>`;
-  if(diff<21600000)             return `<span class="badge soon">🟡 &lt;6h</span>`;
-  return                               `<span class="badge sched">📌 Sched</span>`;
+function badgeHtml(diff, isDyn){
+  // Kept as a helper for compatibility; Timer now shows one colored countdown only.
+  if(diff<=-3600000) return 'expired';
+  if(diff<=0) return 'now';
+  if(diff<30*60*1000) return 'green';
+  if(diff<10*3600000) return 'orange';
+  return '';
+}
+
+function countdownText(diff){
+  if(diff<=-3600000) return '💀 Expired';
+  if(diff<=0) return `Spawn (${fmtAgo(diff)})`;
+  return fmtCD(diff);
 }
 
 function rowCls(diff){
   if(diff<=-3600000) return 'row-exp';
-  if(diff<3600000)   return 'row-crit';
-  if(diff<21600000)  return 'row-soon';
+  if(diff<=0) return 'row-spawned';
+  if(diff<30*60*1000) return 'row-crit';
+  if(diff<10*3600000) return 'row-soon';
+  return '';
+}
+
+function countdownClass(diff){
+  if(diff<=-3600000) return 'expired';
+  if(diff<=0) return 'now';
+  if(diff<30*60*1000) return 'green';
+  if(diff<10*3600000) return 'orange';
   return '';
 }
 
@@ -416,20 +457,17 @@ function render(){
 
   const tbody=document.getElementById('tbody');
   if(!filtered.length){
-    tbody.innerHTML=`<tr class="empty"><td colspan="4">No bosses match — check filters or set kill times</td></tr>`;
+    tbody.innerHTML=`<tr class="empty"><td colspan="3">No bosses match — check filters or set kill times</td></tr>`;
     return;
   }
 
-  tbody.innerHTML=filtered.map(({name,loc,resp,diff})=>{
-    const pin=resp.getTime()===resp.getTime()&&!S.dyn.find(d=>d.name===name)?'<span class="pin-badge">📌</span>':'';
-    // check if dyn
-    const isDyn=!!S.dyn.find(d=>d.name===name);
+  tbody.innerHTML=filtered.map(({name,loc,resp,diff,isDyn})=>{
     const pinIcon=isDyn?'':'<span class="pin-badge">📌</span>';
-    return `<tr class="${rowCls(diff)}" data-t="${resp.getTime()}">
+    const isRecentFixedSpawn=!isDyn && diff<=0 && diff>=-20*60*1000;
+    return `<tr class="${rowCls(diff)}${isRecentFixedSpawn?' row-spawned':''}" data-t="${resp.getTime()}" data-dyn="${isDyn?'1':'0'}">
       <td><div class="boss-name">${pinIcon}${name}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
-      <td>${badgeHtml(diff)}</td>
       <td class="spawn-time">${fmtDate(resp)}</td>
-      <td class="cd">${fmtCD(diff)}</td>
+      <td class="cd"><span class="cd-value ${countdownClass(diff)}">${countdownText(diff)}</span></td>
     </tr>`;
   }).join('');
 }
@@ -557,22 +595,7 @@ document.getElementById('copyBtn').addEventListener('click',()=>{
 
 // ── TICKER ───────────────────────────────────────────────────────
 function tick(){
-  let needRerender=false;
-  document.querySelectorAll('tr[data-t]').forEach(tr=>{
-    const t=+tr.dataset.t, diff=t-Date.now();
-    const cd=tr.querySelector('.cd'); if(cd) cd.textContent=fmtCD(diff);
-    // update alive badge text
-    const badge=tr.querySelector('.badge.alive');
-    if(badge) badge.textContent=`🟢 Alive (${fmtAgo(diff)})`;
-    // check if expired threshold just crossed → needs full re-render to move row
-    const wasExp=tr.classList.contains('row-exp');
-    const isExp=diff<=-3600000;
-    if(isExp!==wasExp) needRerender=true;
-    tr.classList.toggle('row-exp', isExp);
-    tr.classList.toggle('row-crit',!isExp&&diff>0&&diff<3600000);
-    tr.classList.toggle('row-soon',!isExp&&diff>0&&diff>=3600000&&diff<21600000);
-  });
-  if(needRerender) render();
+  render();
   setTimeout(tick,1000);
 }
 
