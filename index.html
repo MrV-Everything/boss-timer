@@ -124,6 +124,7 @@ tbody tr:hover{background:var(--bg2)}
   <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
   <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
   <button class="btn" id="filterAlive" title="Show alive">🟢 Alive</button>
+  <button class="btn btn-accent" id="adminAccessBtn" type="button">Admin Login</button>
 </div>
 
 <div class="tabs">
@@ -198,6 +199,21 @@ tbody tr:hover{background:var(--bg2)}
       <button class="btn" id="genBtn">Generate Link</button>
     </div>
     <div class="flash" id="shareFlash"></div>
+  </div>
+</div>
+
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="ov" id="adminLoginModal" hidden>
+  <div class="modal">
+    <h3>🔐 Admin Login</h3>
+    <p style="color:var(--fg2);font-size:12px;margin:0 0 12px">Enter your admin access code to unlock the editing tabs.</p>
+    <input type="password" class="dti" id="adminAccessCode" placeholder="Admin access code" autocomplete="current-password">
+    <div id="adminLoginError" style="color:var(--crit);font-size:12px;margin-top:8px;min-height:16px"></div>
+    <div class="mbtns">
+      <button class="btn" id="adminLoginCancel" type="button">Cancel</button>
+      <button class="btn btn-accent" id="adminLoginSubmit" type="button">Login</button>
+    </div>
   </div>
 </div>
 
@@ -516,6 +532,7 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
 document.querySelector('.tabs').addEventListener('click',e=>{
   const btn=e.target.closest('.tab'); if(!btn) return;
   const t=btn.dataset.tab;
+  if (!isAdmin && t !== 'timer') return;
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   document.getElementById('tab-timer').hidden=t!=='timer';
   document.getElementById('tab-dyn').hidden=t!=='dyn';
@@ -652,19 +669,84 @@ document.getElementById('syncBtn').addEventListener('click', async () => {
   }
 });
 
-// ── VIEW MODE (read-only share link) ─────────────────────────────
-const isView = location.search.includes('v=1') || location.hash.includes('v=1');
-if(isView){
-  // hide edit tabs and topbar controls
-  document.querySelectorAll('.tab[data-tab="dyn"],.tab[data-tab="fix"],.tab[data-tab="share"]').forEach(el=>el.hidden=true);
-  document.getElementById('search').hidden=true;
-  document.getElementById('filterPin').hidden=true;
-  document.getElementById('filterAlive').hidden=true;
+// ── ACCESS CONTROL (public timer + admin code) ────────────────────
+// IMPORTANT: This is a convenience gate only. Because this is a static
+// GitHub Pages file, the token can be discovered by inspecting page source.
+// Use a server-side authentication system for real security.
+const ADMIN_TOKEN = '6TYcwgZbUx05llRs3DtDHlJARln16g8H3mLbTGtuFvdtn3Mr';
+const params = new URLSearchParams(location.search);
+const hasAdminUrlToken = params.get('access') === ADMIN_TOKEN;
+let isAdmin = hasAdminUrlToken || sessionStorage.getItem('bossTimerAdmin') === '1';
+const isSharedView = params.get('v') === '1' || location.hash.includes('v=1');
+
+function applyAccessMode() {
+  const adminTabs = document.querySelectorAll('.tab[data-tab="dyn"],.tab[data-tab="fix"],.tab[data-tab="share"]');
+  adminTabs.forEach(el => el.hidden = !isAdmin);
+  document.getElementById('search').hidden = !isAdmin;
+  document.getElementById('filterPin').hidden = !isAdmin;
+  document.getElementById('filterAlive').hidden = !isAdmin;
+
+  const accessBtn = document.getElementById('adminAccessBtn');
+  accessBtn.textContent = isAdmin ? 'Admin Logout' : 'Admin Login';
+  accessBtn.title = isAdmin ? 'Exit admin mode' : 'Enter admin access code';
+
+  // If a non-admin opens an edit tab via a stale UI state, return to Timer.
+  if (!isAdmin) {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === 'timer'));
+    document.getElementById('tab-timer').hidden = false;
+    document.getElementById('tab-dyn').hidden = true;
+    document.getElementById('tab-fix').hidden = true;
+    document.getElementById('tab-share').hidden = true;
+  }
 }
+
+document.getElementById('adminAccessBtn').addEventListener('click', () => {
+  if (isAdmin) {
+    isAdmin = false;
+    sessionStorage.removeItem('bossTimerAdmin');
+    // Remove admin token from the address bar after logout.
+    if (params.has('access')) {
+      params.delete('access');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    }
+    applyAccessMode();
+    return;
+  }
+  document.getElementById('adminAccessCode').value = '';
+  document.getElementById('adminLoginError').textContent = '';
+  document.getElementById('adminLoginModal').hidden = false;
+  setTimeout(() => document.getElementById('adminAccessCode').focus(), 0);
+});
+
+function submitAdminLogin() {
+  const entered = document.getElementById('adminAccessCode').value;
+  if (entered === ADMIN_TOKEN) {
+    isAdmin = true;
+    sessionStorage.setItem('bossTimerAdmin', '1');
+    document.getElementById('adminLoginModal').hidden = true;
+    applyAccessMode();
+  } else {
+    document.getElementById('adminLoginError').textContent = 'Incorrect access code. Please try again.';
+  }
+}
+
+document.getElementById('adminLoginSubmit').addEventListener('click', submitAdminLogin);
+document.getElementById('adminAccessCode').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAdminLogin();
+});
+document.getElementById('adminLoginCancel').addEventListener('click', () => {
+  document.getElementById('adminLoginModal').hidden = true;
+});
+document.getElementById('adminLoginModal').addEventListener('click', e => {
+  if (e.target.id === 'adminLoginModal') e.currentTarget.hidden = true;
+});
+
 
 // ── INIT ─────────────────────────────────────────────────────────
 load();
 if(fromHash()) save();
+applyAccessMode();
 render();
 tick();
 </script>
