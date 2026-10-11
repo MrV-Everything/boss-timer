@@ -1,0 +1,674 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boss Timer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;
+  --fg:#e6edf3;--fg2:#8b949e;--accent:#58a6ff;
+  --crit:#f85149;--soon:#d29922;--alive:#3fb950;
+  --pin:#a5d6ff;
+  font-size:14px;color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;padding:0 12px 24px;background:var(--bg);color:var(--fg);font-family:'Inter',system-ui,sans-serif;min-height:100vh}
+
+/* TOP BAR */
+.topbar{
+  position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap;
+}
+.topbar h1{margin:0;font-size:15px;font-weight:600;flex:1}
+.search{
+  background:var(--bg3);border:1px solid var(--border);color:var(--fg);
+  padding:5px 10px;border-radius:6px;font-size:13px;font-family:'Inter',sans-serif;
+  width:160px;outline:none;
+}
+.search:focus{border-color:var(--accent)}
+.btn{
+  padding:5px 12px;border-radius:6px;font-size:12px;font-family:'Inter',sans-serif;
+  cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--fg2);
+  transition:all .15s;white-space:nowrap;
+}
+.btn:hover{color:var(--fg);border-color:var(--fg2)}
+.btn-accent{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-accent:hover{opacity:.85;color:#000}
+
+/* TABS */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:0 -12px;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 14px;font-size:13px;font-family:'Inter',sans-serif;color:var(--fg2);cursor:pointer;white-space:nowrap;margin-bottom:-1px;transition:color .15s}
+.tab:hover{color:var(--fg)}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* TABLE */
+.wrap{overflow-x:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;min-width:500px}
+thead th{
+  background:var(--bg2);padding:7px 10px;font-size:11px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--fg2);text-align:left;
+  white-space:nowrap;border-bottom:1px solid var(--border);
+}
+thead th.r{text-align:right}
+tbody td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+
+.boss-name{font-weight:500}
+.boss-loc{font-size:11px;color:var(--fg2);margin-top:1px}
+.pin-badge{font-size:10px;color:var(--pin);margin-right:3px}
+
+.cd{font-family:'IBM Plex Mono',monospace;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.spawn-time{font-size:12px;color:var(--fg2);white-space:nowrap}
+
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap}
+.alive   {background:rgba(63,185,80,.12);color:var(--alive)}
+.soon    {background:rgba(210,153,34,.12);color:var(--soon)}
+.crit    {background:rgba(248,81,73,.12);color:var(--crit)}
+.sched   {background:rgba(139,148,158,.1);color:var(--fg2)}
+.expired {background:rgba(139,148,158,.08);color:var(--fg2)}
+.row-crit .boss-name{color:var(--crit)}
+.row-soon .boss-name{color:var(--soon)}
+.row-exp  {opacity:.5}
+
+.kill-btn{
+  padding:2px 7px;font-size:11px;font-family:'IBM Plex Mono',monospace;
+  background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+  color:var(--fg2);cursor:pointer;transition:all .15s;
+}
+.kill-btn:hover{border-color:var(--crit);color:var(--crit)}
+.empty td{text-align:center;color:var(--fg2);padding:24px;font-size:13px}
+
+/* EDIT PANEL */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;margin-top:14px}
+.panel h2{margin:0 0 4px;font-size:14px;font-weight:600}
+.panel p{margin:0 0 10px;font-size:12px;color:var(--fg2)}
+.list{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;margin-bottom:10px}
+
+/* dyn row: name | loc | hrs | killed | kill-btn | del */
+.dr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 52px minmax(0,1.3fr) 46px 30px;gap:5px;align-items:center}
+/* fix row: name | loc | schedule | del */
+.fr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.8fr) 30px;gap:5px;align-items:center}
+
+.ei{background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:5px 8px;border-radius:5px;font-size:12px;font-family:'Inter',sans-serif;width:100%}
+.ei:focus{outline:none;border-color:var(--accent)}
+.ei-n{text-align:right;font-family:'IBM Plex Mono',monospace}
+.hdr{font-size:10px;color:var(--fg2);letter-spacing:.05em;text-transform:uppercase;padding-inline:2px}
+.del{background:none;border:1px solid var(--border);color:var(--fg2);border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer;transition:all .15s}
+.del:hover{border-color:var(--crit);color:var(--crit)}
+.act{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.flash{font-size:12px;color:var(--alive);height:18px;margin-top:4px}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;max-width:320px;width:100%}
+.modal h3{margin:0 0 12px;font-size:15px}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.dti{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:13px;font-family:'IBM Plex Mono',monospace}
+.dti:focus{outline:none;border-color:var(--accent)}
+
+/* SHARE */
+.share-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.url-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace}
+.url-input:focus{outline:none;border-color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚔️ Boss Timer</h1>
+  <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
+  <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
+  <button class="btn" id="filterAlive" title="Show alive">🟢 Alive</button>
+</div>
+
+<div class="tabs">
+  <button class="tab on" data-tab="timer">Timer</button>
+  <button class="tab" data-tab="dyn">Dynamic Bosses</button>
+  <button class="tab" data-tab="fix">Fixed Bosses</button>
+  <button class="tab" data-tab="share">Share</button>
+</div>
+
+<!-- TIMER -->
+<div id="tab-timer">
+  <div class="wrap">
+    <table>
+      <thead><tr>
+        <th>Boss</th>
+        <th>Status</th>
+        <th>Next Spawn</th>
+        <th class="r">Countdown</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DYN EDIT -->
+<div id="tab-dyn" hidden>
+  <div class="panel">
+    <h2>Dynamic Bosses</h2>
+    <p>Respawn = last kill + hours. Set kill time via ☠ button or type in the field. Sync pulls kill times from your Google Sheet.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn" id="syncBtn" style="display:flex;align-items:center;gap:5px">🔄 Sync from Sheet</button>
+      <span style="font-size:11px;color:var(--fg2)" id="syncStatus"></span>
+    </div>
+    <div class="dr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Hrs</span><span>Killed / Respawns</span><span></span><span></span></div>
+    <div class="list" id="dynList"></div>
+    <div class="act">
+      <button class="btn" id="addDyn">+ Add</button>
+      <button class="btn btn-accent" id="saveDyn">Save</button>
+    </div>
+    <div class="flash" id="dynFlash"></div>
+  </div>
+</div>
+
+<!-- FIX EDIT -->
+<div id="tab-fix" hidden>
+  <div class="panel">
+    <h2>Fixed Bosses</h2>
+    <p>Weekly schedule. Day: 0=Sun 1=Mon … 6=Sat. Format: <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">day,H:MM</code>. Multiple: <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">0,19:00 | 3,21:00</code></p>
+    <div class="fr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Schedule</span><span></span></div>
+    <div class="list" id="fixList"></div>
+    <div class="act">
+      <button class="btn" id="addFix">+ Add</button>
+      <button class="btn btn-accent" id="saveFix">Save</button>
+    </div>
+    <div class="flash" id="fixFlash"></div>
+  </div>
+  <div class="panel" style="text-align:right;margin-top:10px">
+    <button class="btn" id="resetBtn">Reset to Default</button>
+  </div>
+</div>
+
+<!-- SHARE -->
+<div id="tab-share" hidden>
+  <div class="panel">
+    <h2>Share</h2>
+    <p>Generates a <strong>read-only</strong> link — viewers see the Timer only, no edit tabs. Only you (the owner) can edit.</p>
+    <div class="share-row">
+      <input class="url-input" id="shareUrl" readonly placeholder="Click Generate…">
+      <button class="btn btn-accent" id="copyBtn">Copy</button>
+    </div>
+    <div class="act" style="margin-top:10px">
+      <button class="btn" id="genBtn">Generate Link</button>
+    </div>
+    <div class="flash" id="shareFlash"></div>
+  </div>
+</div>
+
+<!-- KILL MODAL -->
+<div class="ov" id="modal" hidden>
+  <div class="modal">
+    <h3>☠ Kill: <span id="mBoss"></span></h3>
+    <label style="font-size:12px;color:var(--fg2);display:block;margin-bottom:5px">Kill time</label>
+    <input type="datetime-local" class="dti" id="mTime">
+    <div class="mbtns">
+      <button class="btn" id="mCancel">Cancel</button>
+      <button class="btn btn-accent" id="mConfirm">Set Kill</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────
+const DEFAULT_DYN = [
+  {name:'Venatus',      loc:'Corrupted B.',  hrs:10},
+  {name:'Viorent',      loc:'Crescent L.',   hrs:10},
+  {name:'Ego',          loc:'Ulan C.',        hrs:21},
+  {name:'Lady Dalia',   loc:'Twilight H.',    hrs:18},
+  {name:'Livera',       loc:'Protectors R.',  hrs:24},
+  {name:'Araneo',       loc:'TOT F1',         hrs:24},
+  {name:'Undomiel',     loc:'S Lab',          hrs:24},
+  {name:'General Aquleus',loc:'TOT F2',       hrs:29},
+  {name:'Amentis',      loc:'LOG',            hrs:29},
+  {name:'Baron',        loc:'BOT',            hrs:32},
+  {name:'Gareth',       loc:'Deadman F1',     hrs:32},
+  {name:'Wannitas',     loc:'Plateau',        hrs:48},
+  {name:'Metus',        loc:'Plateau',        hrs:48},
+  {name:'Duplican',     loc:'Plateau',        hrs:48},
+  {name:'Shuliar',      loc:'Ruins..War',     hrs:35},
+  {name:'Catena',       loc:'Deadman F3',     hrs:35},
+  {name:'Larba',        loc:'Ruins..War',     hrs:35},
+  {name:'Titore',       loc:'Deadman F2',     hrs:37},
+  {name:'Secreta',      loc:'Silvergrass',    hrs:62},
+  {name:'Ordo',         loc:'Silvergrass',    hrs:62},
+  {name:'Asta',         loc:'Silvergrass',    hrs:62},
+  {name:'Supore',       loc:'Silvergrass',    hrs:62},
+];
+
+// day 0=Sun..6=Sat
+const DEFAULT_FIX = [
+  {name:'Clemantis',  loc:'Corrupted B.',  sch:[{d:1,h:11,m:30},{d:4,h:19,m:0}]},
+  {name:'Saphirus',   loc:'Crescent L.',   sch:[{d:0,h:17,m:0},{d:2,h:11,m:30}]},
+  {name:'Neutro',     loc:'Desert.',       sch:[{d:2,h:19,m:0},{d:4,h:11,m:30}]},
+  {name:'Thymele',    loc:'Twilight H.',   sch:[{d:1,h:19,m:0},{d:3,h:11,m:30}]},
+  {name:'Milavy',     loc:'TOT F3',        sch:[{d:6,h:15,m:0}]},
+  {name:'Ringor',     loc:'BOT',           sch:[{d:6,h:17,m:0}]},
+  {name:'Roderick',   loc:'Garbana F1',    sch:[{d:5,h:19,m:0}]},
+  {name:'Auraq',      loc:'Garbana F2',    sch:[{d:3,h:21,m:0},{d:5,h:22,m:0}]},
+  {name:'Chaiflock',  loc:'Silvergrass',   sch:[{d:0,h:15,m:0}]},
+  {name:'Benji',      loc:'Barbas',        sch:[{d:0,h:21,m:0}]},
+  {name:'Motti',      loc:'Kransia',       sch:[{d:3,h:19,m:0},{d:6,h:19,m:0}]},
+  {name:'Libitina',   loc:'Dracas',        sch:[{d:1,h:21,m:0},{d:6,h:21,m:0}]},
+  {name:'Rakajeth',   loc:'Dracas',        sch:[{d:0,h:19,m:0},{d:2,h:22,m:0}]},
+  {name:'Icaruthia',  loc:'Kransia',       sch:[{d:2,h:21,m:0},{d:5,h:21,m:0}]},
+  {name:'Nevaeh',     loc:'Kransia',       sch:[{d:0,h:22,m:0}]},
+  {name:'Tumier',     loc:'Garbana F3',    sch:[{d:0,h:19,m:0}]},
+  {name:'Lucus',      loc:'Volcanca',      sch:[{d:6,h:22,m:0}]},
+  {name:'Camalia',    loc:'Hidden Lab',    sch:[{d:4,h:21,m:0}]},
+];
+
+// ── STATE ────────────────────────────────────────────────────────
+let S = {dyn: [], fix: [], kills: {}};
+const KEY = 'bossTimer4';
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+
+function load(){
+  try{
+    const r = localStorage.getItem(KEY);
+    if(r){ const p=JSON.parse(r); S.dyn=p.dyn||clone(DEFAULT_DYN); S.fix=p.fix||clone(DEFAULT_FIX); S.kills=p.kills||{}; }
+    else { S.dyn=clone(DEFAULT_DYN); S.fix=clone(DEFAULT_FIX); }
+  }catch{ S.dyn=clone(DEFAULT_DYN); S.fix=clone(DEFAULT_FIX); }
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch{}}
+
+function fromHash(){
+  try{
+    if(!location.hash.startsWith('#d=')) return false;
+    const p=JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(3)))));
+    if(p.dyn) S.dyn=p.dyn; if(p.fix) S.fix=p.fix; if(p.k) S.kills=p.k;
+    return true;
+  }catch{return false}
+}
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function nextFixed(d,h,m){
+  const now=new Date(), r=new Date(now);
+  r.setHours(h,m,0,0);
+  let diff=(d-r.getDay()+7)%7;
+  if(diff===0 && r<=now) diff=7;
+  r.setDate(r.getDate()+diff);
+  return r;
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString('en-PH',{month:'short',day:'numeric'})
+    + ' ' + d.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit',hour12:true})
+    + ' (' + d.toLocaleDateString('en-PH',{weekday:'short'}) + ')';
+}
+
+function fmtCD(ms){
+  if(ms<=0) return 'Now!';
+  const s=Math.floor(ms/1000), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sc=s%60;
+  if(h>=24){const d=Math.floor(h/24),rh=h%24; return `${d}d ${rh}h ${String(m).padStart(2,'0')}m`}
+  if(h>0) return `${h}h ${String(m).padStart(2,'0')}m ${String(sc).padStart(2,'0')}s`;
+  return `${m}m ${String(sc).padStart(2,'0')}s`;
+}
+
+function fmtAgo(ms){ // ms is negative diff (how long ago spawned)
+  const s=Math.floor(-ms/1000), m=Math.floor(s/60), h=Math.floor(m/60);
+  if(h>0) return `${h}h ${m%60}m ago`;
+  if(m>0) return `${m}m ago`;
+  return `${s}s ago`;
+}
+
+function badgeHtml(diff){
+  if(diff<=0 && diff>-3600000) return `<span class="badge alive">🟢 Alive (${fmtAgo(diff)})</span>`;
+  if(diff<=-3600000)            return `<span class="badge expired">💀 Expired</span>`;
+  if(diff<3600000)              return `<span class="badge crit">🔴 &lt;1h</span>`;
+  if(diff<21600000)             return `<span class="badge soon">🟡 &lt;6h</span>`;
+  return                               `<span class="badge sched">📌 Sched</span>`;
+}
+
+function rowCls(diff){
+  if(diff<=-3600000) return 'row-exp';
+  if(diff<3600000)   return 'row-crit';
+  if(diff<21600000)  return 'row-soon';
+  return '';
+}
+
+function toLocalDT(ms){
+  if(!ms) return '';
+  const d=new Date(ms-new Date().getTimezoneOffset()*60000);
+  return d.toISOString().slice(0,16);
+}
+
+function flash(id,msg){
+  const el=document.getElementById(id); if(!el) return;
+  el.textContent=msg; setTimeout(()=>el.textContent='',2000);
+}
+
+// ── FILTER STATE ─────────────────────────────────────────────────
+let filterPin=false, filterAlive=false, searchQ='';
+
+document.getElementById('filterPin').addEventListener('click', e=>{
+  filterPin=!filterPin;
+  e.currentTarget.style.opacity=filterPin?'1':'.55';
+  render();
+});
+document.getElementById('filterAlive').addEventListener('click', e=>{
+  filterAlive=!filterAlive;
+  e.currentTarget.style.opacity=filterAlive?'1':'.55';
+  render();
+});
+document.getElementById('search').addEventListener('input', e=>{
+  searchQ=e.target.value.toLowerCase(); render();
+});
+
+// init filter button opacity
+document.getElementById('filterPin').style.opacity='.55';
+document.getElementById('filterAlive').style.opacity='.55';
+
+// ── RENDER TIMER ─────────────────────────────────────────────────
+function render(){
+  const now=Date.now(), rows=[];
+
+  if(!filterPin){
+    S.dyn.forEach(b=>{
+      const kt=S.kills[b.name]; if(!kt) return;
+      const resp=new Date(kt+b.hrs*3600000);
+      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:true});
+    });
+  }
+
+  S.fix.forEach(b=>{
+    b.sch.forEach(s=>{
+      const resp=nextFixed(s.d,s.h,s.m);
+      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:false});
+    });
+  });
+
+  // sort: expired to bottom, rest by resp asc
+  rows.sort((a,b)=>{
+    const ae=a.diff<=-3600000, be=b.diff<=-3600000;
+    if(ae&&!be) return 1; if(!ae&&be) return -1;
+    return a.resp-b.resp;
+  });
+
+  const q=searchQ;
+  const filtered=rows.filter(r=>{
+    if(q && !r.name.toLowerCase().includes(q) && !r.loc.toLowerCase().includes(q)) return false;
+    if(filterAlive && r.diff>0) return false;
+    return true;
+  });
+
+  const tbody=document.getElementById('tbody');
+  if(!filtered.length){
+    tbody.innerHTML=`<tr class="empty"><td colspan="4">No bosses match — check filters or set kill times</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML=filtered.map(({name,loc,resp,diff})=>{
+    const pin=resp.getTime()===resp.getTime()&&!S.dyn.find(d=>d.name===name)?'<span class="pin-badge">📌</span>':'';
+    // check if dyn
+    const isDyn=!!S.dyn.find(d=>d.name===name);
+    const pinIcon=isDyn?'':'<span class="pin-badge">📌</span>';
+    return `<tr class="${rowCls(diff)}" data-t="${resp.getTime()}">
+      <td><div class="boss-name">${pinIcon}${name}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
+      <td>${badgeHtml(diff)}</td>
+      <td class="spawn-time">${fmtDate(resp)}</td>
+      <td class="cd">${fmtCD(diff)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── KILL MODAL ───────────────────────────────────────────────────
+let mTarget=null;
+function openModal(name){
+  mTarget=name;
+  document.getElementById('mBoss').textContent=name;
+  const now=new Date(); now.setSeconds(0,0);
+  document.getElementById('mTime').value=toLocalDT(now.getTime());
+  document.getElementById('modal').hidden=false;
+}
+document.getElementById('mCancel').addEventListener('click',()=>{document.getElementById('modal').hidden=true});
+document.getElementById('mConfirm').addEventListener('click',()=>{
+  if(!mTarget) return;
+  const v=document.getElementById('mTime').value; if(!v) return;
+  S.kills[mTarget]=new Date(v).getTime();
+  save(); document.getElementById('modal').hidden=true; render();
+});
+
+// ── DYNAMIC EDITOR ───────────────────────────────────────────────
+function renderDyn(){
+  const list=document.getElementById('dynList'); list.innerHTML='';
+  S.dyn.forEach((b,i)=>{
+    const row=document.createElement('div');
+    row.className='dr'; row.dataset.i=i;
+    const kt=S.kills[b.name]||null;
+    row.innerHTML=`
+      <input class="ei" data-f="name" value="${b.name}" placeholder="Name">
+      <input class="ei" data-f="loc"  value="${b.loc||''}" placeholder="Location">
+      <input class="ei ei-n" data-f="hrs" type="number" value="${b.hrs}" min="1">
+      <input class="ei" data-f="killed" type="datetime-local" value="${kt?toLocalDT(kt):''}" title="Killed / Respawns time" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
+      <button class="kill-btn" data-kb="${b.name}" title="Set kill time">☠ Kill</button>
+      <button class="del" data-i="${i}">✕</button>`;
+    list.appendChild(row);
+    row.querySelector('[data-kb]').addEventListener('click', e=>openModal(e.currentTarget.dataset.kb));
+    row.querySelector('.del').addEventListener('click',()=>{
+      if(!confirm(`Delete "${b.name}"?`)) return;
+      S.dyn.splice(i,1);save();renderDyn();
+    });
+  });
+}
+document.getElementById('addDyn').addEventListener('click',()=>{
+  S.dyn.push({name:'NewBoss',loc:'',hrs:24});save();renderDyn();
+});
+document.getElementById('saveDyn').addEventListener('click',()=>{
+  document.querySelectorAll('#dynList .dr').forEach((row,i)=>{
+    if(!S.dyn[i]) return;
+    S.dyn[i].name=row.querySelector('[data-f=name]').value.trim()||S.dyn[i].name;
+    S.dyn[i].loc =row.querySelector('[data-f=loc]').value.trim();
+    S.dyn[i].hrs =parseFloat(row.querySelector('[data-f=hrs]').value)||S.dyn[i].hrs;
+    const kv=row.querySelector('[data-f=killed]').value;
+    if(kv) S.kills[S.dyn[i].name]=new Date(kv).getTime();
+    else delete S.kills[S.dyn[i].name];
+  });
+  save();renderDyn();render();flash('dynFlash','Saved!');
+});
+
+// ── FIXED EDITOR ─────────────────────────────────────────────────
+function renderFix(){
+  const list=document.getElementById('fixList'); list.innerHTML='';
+  S.fix.forEach((b,i)=>{
+    const schStr=b.sch.map(s=>`${s.d},${s.h}:${String(s.m).padStart(2,'0')}`).join(' | ');
+    const row=document.createElement('div');
+    row.className='fr'; row.dataset.i=i;
+    row.innerHTML=`
+      <input class="ei" data-f="name" value="${b.name}" placeholder="Name">
+      <input class="ei" data-f="loc"  value="${b.loc||''}" placeholder="Location">
+      <input class="ei" data-f="sch"  value="${schStr}" placeholder="0,19:00 | 3,21:00">
+      <button class="del" data-i="${i}">✕</button>`;
+    list.appendChild(row);
+    row.querySelector('.del').addEventListener('click',()=>{
+      if(!confirm(`Delete "${b.name}"?`)) return;
+      S.fix.splice(i,1);save();renderFix();
+    });
+  });
+}
+document.getElementById('addFix').addEventListener('click',()=>{
+  S.fix.push({name:'NewFixed',loc:'',sch:[{d:0,h:20,m:0}]});save();renderFix();
+});
+document.getElementById('saveFix').addEventListener('click',()=>{
+  document.querySelectorAll('#fixList .fr').forEach((row,i)=>{
+    if(!S.fix[i]) return;
+    S.fix[i].name=row.querySelector('[data-f=name]').value.trim()||S.fix[i].name;
+    S.fix[i].loc =row.querySelector('[data-f=loc]').value.trim();
+    const parts=row.querySelector('[data-f=sch]').value.split('|').map(s=>s.trim()).filter(Boolean);
+    const sch=parts.map(p=>{const m=p.match(/^(\d),(\d+):(\d+)$/);return m?{d:+m[1],h:+m[2],m:+m[3]}:null}).filter(Boolean);
+    if(sch.length) S.fix[i].sch=sch;
+  });
+  save();renderFix();render();flash('fixFlash','Saved!');
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  if(!confirm('Reset everything to default?')) return;
+  S.dyn=clone(DEFAULT_DYN);S.fix=clone(DEFAULT_FIX);S.kills={};
+  save();renderDyn();renderFix();render();flash('fixFlash','Reset done.');
+});
+
+// ── TABS ─────────────────────────────────────────────────────────
+document.querySelector('.tabs').addEventListener('click',e=>{
+  const btn=e.target.closest('.tab'); if(!btn) return;
+  const t=btn.dataset.tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  document.getElementById('tab-timer').hidden=t!=='timer';
+  document.getElementById('tab-dyn').hidden=t!=='dyn';
+  document.getElementById('tab-fix').hidden=t!=='fix';
+  document.getElementById('tab-share').hidden=t!=='share';
+  if(t==='dyn') renderDyn();
+  if(t==='fix') renderFix();
+});
+
+// ── SHARE ────────────────────────────────────────────────────────
+document.getElementById('genBtn').addEventListener('click',()=>{
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify({dyn:S.dyn,fix:S.fix,k:S.kills}))));
+  document.getElementById('shareUrl').value=location.href.split('#')[0]+'?v=1#d='+b64;
+});
+document.getElementById('copyBtn').addEventListener('click',()=>{
+  const u=document.getElementById('shareUrl').value;
+  if(!u){flash('shareFlash','Generate first');return;}
+  navigator.clipboard.writeText(u).then(()=>flash('shareFlash','Copied!')).catch(()=>{
+    document.getElementById('shareUrl').select();flash('shareFlash','Select manually');
+  });
+});
+
+// ── TICKER ───────────────────────────────────────────────────────
+function tick(){
+  let needRerender=false;
+  document.querySelectorAll('tr[data-t]').forEach(tr=>{
+    const t=+tr.dataset.t, diff=t-Date.now();
+    const cd=tr.querySelector('.cd'); if(cd) cd.textContent=fmtCD(diff);
+    // update alive badge text
+    const badge=tr.querySelector('.badge.alive');
+    if(badge) badge.textContent=`🟢 Alive (${fmtAgo(diff)})`;
+    // check if expired threshold just crossed → needs full re-render to move row
+    const wasExp=tr.classList.contains('row-exp');
+    const isExp=diff<=-3600000;
+    if(isExp!==wasExp) needRerender=true;
+    tr.classList.toggle('row-exp', isExp);
+    tr.classList.toggle('row-crit',!isExp&&diff>0&&diff<3600000);
+    tr.classList.toggle('row-soon',!isExp&&diff>0&&diff>=3600000&&diff<21600000);
+  });
+  if(needRerender) render();
+  setTimeout(tick,1000);
+}
+
+// ── SHEET SYNC ───────────────────────────────────────────────────
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxjsHW26dYFL_LTPXsXo03RwrG1AgD4RRnmmpSSifKzDchSm9rCvE3nmNSZqY1WUr4/exec';
+
+// Parse kill timestamp — supports both GAS formats:
+//   "Sun Oct 11 2026 10:37:00 GMT+0800 (Philippine Standard Time)"  ← new
+//   "Oct 11 - 12:37 AM"  ← old sheet format
+function parseSheetDate(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+
+  // try native Date parse first (handles full ISO / GAS toString format)
+  const ts = Date.parse(s);
+  if (!isNaN(ts)) return ts;
+
+  // fallback: "Oct 11 - 12:37 AM"
+  const m = s.match(/(\w+)\s+(\d+)\s*-\s*(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return null;
+  const [,mon,day,hStr,minStr,ampm] = m;
+  const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  const mo = months[mon]; if (mo === undefined) return null;
+  let h = parseInt(hStr), mi = parseInt(minStr);
+  if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
+  if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+  const now = new Date();
+  const d = new Date(now.getFullYear(), mo, parseInt(day), h, mi, 0, 0);
+  if (d - now > 7 * 86400000) d.setFullYear(d.getFullYear() - 1);
+  return d.getTime();
+}
+
+function syncFromGAS(rows) {
+  let updated = 0, skipped = 0;
+  rows.forEach(({name, killed}) => {
+    const boss = S.dyn.find(b => b.name === name);
+    if (!boss) { skipped++; return; }
+    const ms = parseSheetDate(killed);
+    if (ms) { S.kills[name] = ms; updated++; }
+  });
+  save(); render(); renderDyn();
+  const status = document.getElementById('syncStatus');
+  status.textContent = `✓ ${updated} updated, ${skipped} not matched`;
+  status.style.color = 'var(--alive)';
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = false;
+  btn.textContent = '🔄 Sync from Sheet';
+}
+
+document.getElementById('syncBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncBtn');
+  const status = document.getElementById('syncStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing…';
+  status.textContent = '';
+
+  // try direct fetch first (works if GAS CORS headers are set properly)
+  try {
+    const res = await fetch(GAS_URL, {signal: AbortSignal.timeout(8000)});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    syncFromGAS(rows);
+    return;
+  } catch(e) {
+    // direct fetch failed — try JSONP fallback
+  }
+
+  // JSONP fallback: injects a <script> tag, GAS must support ?callback= param
+  try {
+    await new Promise((resolve, reject) => {
+      const cbName = '__gasSync_' + Date.now();
+      const timeout = setTimeout(() => {
+        delete window[cbName];
+        script.remove();
+        reject(new Error('timeout'));
+      }, 10000);
+      window[cbName] = (data) => {
+        clearTimeout(timeout);
+        delete window[cbName];
+        script.remove();
+        syncFromGAS(data);
+        resolve();
+      };
+      const script = document.createElement('script');
+      script.src = GAS_URL + '?callback=' + cbName;
+      script.onerror = () => { clearTimeout(timeout); delete window[cbName]; reject(new Error('script load failed')); };
+      document.head.appendChild(script);
+    });
+  } catch(e2) {
+    status.textContent = `✗ CORS blocked. Sa GAS mo: doGet → ContentService na may MimeType.JSON, i-redeploy as "Anyone". (${e2.message})`;
+    status.style.color = 'var(--crit)';
+    btn.disabled = false;
+    btn.textContent = '🔄 Sync from Sheet';
+  }
+});
+
+// ── VIEW MODE (read-only share link) ─────────────────────────────
+const isView = location.search.includes('v=1') || location.hash.includes('v=1');
+if(isView){
+  // hide edit tabs and topbar controls
+  document.querySelectorAll('.tab[data-tab="dyn"],.tab[data-tab="fix"],.tab[data-tab="share"]').forEach(el=>el.hidden=true);
+  document.getElementById('search').hidden=true;
+  document.getElementById('filterPin').hidden=true;
+  document.getElementById('filterAlive').hidden=true;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+load();
+if(fromHash()) save();
+render();
+tick();
+</script>
+</body>
+</html>
+
+</body></html>
