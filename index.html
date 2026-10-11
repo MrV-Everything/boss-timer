@@ -641,9 +641,15 @@ function syncFromGAS(payload) {
       ? parsedHours
       : (oldBoss ? oldBoss.hrs : (defaultBoss ? defaultBoss.hrs : 24));
 
+    // Prefer the location synced from Sheet. If an older Apps Script deployment
+    // does not return location yet, preserve the current/default location instead
+    // of replacing it with an empty string.
+    const sheetLocation = row.location == null ? '' : String(row.location).trim();
+    const location = sheetLocation || (oldBoss && oldBoss.loc) || (defaultBoss && defaultBoss.loc) || '';
+
     newDyn.push({
       name,
-      loc: row.location == null ? '' : String(row.location).trim(),
+      loc: location,
       hrs: hours
     });
 
