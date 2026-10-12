@@ -191,10 +191,9 @@ tbody tr:hover{background:var(--bg2)}
     </div>
   </div>
   <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
-  <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
-  <button class="btn" id="filterAlive" title="Show dynamic bosses only">⚔️ Dynamic Only</button>
+  <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed</button>
+  <button class="btn" id="filterAlive" title="Show dynamic bosses only">⚔️ Dynamic</button>
   <button class="btn" id="alertSettingsBtn" title="Alert settings">🔔</button>
-  <button class="btn btn-accent" id="adminAccessBtn" type="button">Admin Login</button>
 </div>
 
 <!-- ALERT SETTINGS PANEL -->
@@ -487,23 +486,25 @@ function flash(id,msg){
 // ── FILTER STATE ─────────────────────────────────────────────────
 let filterPin=false, filterAlive=false, searchQ='';
 
+function setFilterActive(btn, active){
+  btn.style.background = active ? '#e8a030' : '';
+  btn.style.color = active ? '#1a1a2e' : '';
+  btn.style.fontWeight = active ? '700' : '';
+}
+
 document.getElementById('filterPin').addEventListener('click', e=>{
   filterPin=!filterPin;
-  e.currentTarget.style.opacity=filterPin?'1':'.55';
+  setFilterActive(e.currentTarget, filterPin);
   render();
 });
 document.getElementById('filterAlive').addEventListener('click', e=>{
   filterAlive=!filterAlive;
-  e.currentTarget.style.opacity=filterAlive?'1':'.55';
+  setFilterActive(e.currentTarget, filterAlive);
   render();
 });
 document.getElementById('search').addEventListener('input', e=>{
   searchQ=e.target.value.toLowerCase(); render();
 });
-
-// init filter button opacity
-document.getElementById('filterPin').style.opacity='.55';
-document.getElementById('filterAlive').style.opacity='.55';
 
 // ── RENDER TIMER ─────────────────────────────────────────────────
 function render(){
@@ -995,6 +996,20 @@ const hasAdminUrlToken = params.get('access') === ADMIN_TOKEN;
 let isAdmin = hasAdminUrlToken || sessionStorage.getItem('bossTimerAdmin') === '1';
 const isSharedView = params.get('v') === '1' || location.hash.includes('v=1');
 
+// ── ADMIN BOTTOM BTN ─────────────────────────────────────────────
+(function(){
+  const wrap = document.createElement('div');
+  wrap.id = 'adminBtnWrap';
+  wrap.style.cssText = 'display:flex;justify-content:center;padding:18px 0 24px;';
+  const btn = document.createElement('button');
+  btn.id = 'adminAccessBtn';
+  btn.className = 'btn btn-accent';
+  btn.type = 'button';
+  btn.textContent = 'Admin Login';
+  wrap.appendChild(btn);
+  document.body.appendChild(wrap);
+})();
+
 function applyAccessMode() {
   const adminTabs = document.querySelectorAll('.tab[data-tab="dyn"],.tab[data-tab="fix"],.tab[data-tab="share"]');
   adminTabs.forEach(el => el.hidden = !isAdmin);
@@ -1006,6 +1021,9 @@ function applyAccessMode() {
   const accessBtn = document.getElementById('adminAccessBtn');
   accessBtn.textContent = isAdmin ? 'Admin Logout' : 'Admin Login';
   accessBtn.title = isAdmin ? 'Exit admin mode' : 'Enter admin access code';
+  accessBtn.style.background = isAdmin ? '#e8a030' : '';
+  accessBtn.style.color = isAdmin ? '#1a1a2e' : '';
+  document.getElementById('adminBtnWrap').hidden = isSharedView;
 
   // If a non-admin opens an edit tab via a stale UI state, return to Timer.
   if (!isAdmin) {
