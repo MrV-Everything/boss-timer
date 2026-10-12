@@ -617,10 +617,6 @@ function showCopyPopup(e, name, resp){
   });
 }
 
-document.addEventListener('click', e=>{
-  if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
-});
-
 document.getElementById('tbody').addEventListener('click', e=>{
   const tr = e.target.closest('tr');
   if(!tr || tr.classList.contains('empty')) return;
@@ -628,7 +624,13 @@ document.getElementById('tbody').addEventListener('click', e=>{
   if(!t) return;
   const name = tr.querySelector('.boss-name')?.textContent.replace('📌','').trim();
   if(!name) return;
+  e.stopPropagation();
   showCopyPopup(e, name, new Date(t));
+});
+
+// dismiss on outside click — registered after current event loop to avoid self-closing
+document.addEventListener('click', e=>{
+  if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
 });
 
 // ── KILL MODAL ───────────────────────────────────────────────────
