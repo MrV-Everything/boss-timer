@@ -1097,7 +1097,7 @@ function syncFromGAS(payload) {
   if (payload && payload.success === false) {
     throw new Error(payload.error || 'Google Apps Script returned an error');
   }
-  const rows = Array.isArray(payload) ? payload : payload && payload.rows;
+  const rows = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.rows) ? payload.rows : null);
   if (!Array.isArray(rows)) throw new Error('Unexpected Sheet response format');
 
   const newDyn = [];
@@ -1183,6 +1183,7 @@ async function syncSheet({manual = false} = {}) {
     const res = await fetch(GAS_URL, {cache:'no-store', signal:AbortSignal.timeout(10000)});
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const payload = await res.json();
+    console.log('[sync] GAS payload:', JSON.stringify(payload).slice(0, 300));
     syncFromGAS(payload);
   } catch (err) {
     if (manual || !lastSheetSync) {
