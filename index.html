@@ -591,9 +591,11 @@ function showCopyPopup(e, name, resp){
   document.body.appendChild(pop);
   _copyPopup = pop;
 
-  // position near click, keep inside viewport
+  // position near tap/click, keep inside viewport
   const vw = window.innerWidth, vh = window.innerHeight;
-  let x = e.clientX + 8, y = e.clientY + 8;
+  const touch = e.changedTouches ? e.changedTouches[0] : null;
+  let x = (touch ? touch.clientX : e.clientX) + 8;
+  let y = (touch ? touch.clientY : e.clientY) + 8;
   pop.style.visibility = 'hidden';
   pop.style.left = x+'px'; pop.style.top = y+'px';
   requestAnimationFrame(()=>{
@@ -617,7 +619,7 @@ function showCopyPopup(e, name, resp){
   });
 }
 
-document.getElementById('tbody').addEventListener('click', e=>{
+function handleRowTap(e){
   const tr = e.target.closest('tr');
   if(!tr || tr.classList.contains('empty')) return;
   const t = Number(tr.dataset.t);
@@ -625,11 +627,17 @@ document.getElementById('tbody').addEventListener('click', e=>{
   const name = tr.querySelector('.boss-name')?.textContent.replace('📌','').trim();
   if(!name) return;
   e.stopPropagation();
+  if(e.cancelable) e.preventDefault(); // prevent ghost click on mobile
   showCopyPopup(e, name, new Date(t));
-});
+}
+document.getElementById('tbody').addEventListener('click', handleRowTap);
+document.getElementById('tbody').addEventListener('touchend', handleRowTap, {passive:false});
 
-// dismiss on outside click — registered after current event loop to avoid self-closing
+// dismiss on outside click/tap
 document.addEventListener('click', e=>{
+  if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
+});
+document.addEventListener('touchend', e=>{
   if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
 });
 
