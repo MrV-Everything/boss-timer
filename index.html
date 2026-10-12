@@ -534,10 +534,23 @@ function validHexColor(value){
   const hex=String(value ?? '').trim();
   return /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(hex) ? hex : '';
 }
+// Sheet names can contain a leading pin emoji or extra whitespace; normalize
+// names before matching colors so Fixed Boss colors still match the website name.
+function normalizeBossColorKey(value){
+  return String(value ?? '').replace(/^\s*📌\s*/u,'').trim().toLocaleLowerCase();
+}
+function lookupBossColor(group,name){
+  const wanted=normalizeBossColorKey(name);
+  if(Object.prototype.hasOwnProperty.call(group,name)) return validHexColor(group[name]);
+  for(const [key,value] of Object.entries(group)){
+    if(normalizeBossColorKey(key)===wanted) return validHexColor(value);
+  }
+  return '';
+}
 function bossColorDot(name,isDyn){
   const colors=S.colors || {};
   const group=isDyn ? (colors.dyn||{}) : (colors.fix||{});
-  const hex=validHexColor(group[name]);
+  const hex=lookupBossColor(group,name);
   return hex ? `<span class="boss-color-dot" style="background-color:${hex}" aria-label="Boss color ${hex}" title="${hex}"></span>` : '';
 }
 
@@ -1100,23 +1113,34 @@ function syncFromGAS(payload) {
   });
 
   // Fixed boss hex color is read from Column F by Apps Script. Schedules remain local.
-  const fixedRows = payload && !Array.isArray(payload) && Array.isArray(payload.fixedRows)
-    ? payload.fixedRows
-    : [];
+  // Accept fixed color rows under common response property names. Some deployments
+  // may return fixed rows separately; others may include them in the main rows array.
+  let fixedRows = [];
+  if (payload && !Array.isArray(payload)) {
+    if (Array.isArray(payload.fixedRows)) fixedRows = payload.fixedRows;
+    else if (Array.isArray(payload.fixRows)) fixedRows = payload.fixRows;
+    else if (Array.isArray(payload.fixed)) fixedRows = payload.fixed;
+    if (Array.isArray(payload.rows)) {
+      fixedRows = fixedRows.concat(payload.rows.filter(row =>
+        row && (String(row.type || row.kind || '').toLowerCase() === 'fixed' || row.isFixed === true)
+      ));
+    }
+  }
   fixedRows.forEach(row => {
     if (!row || !row.name) return;
     const name = String(row.name).trim();
     if (!name) return;
-    const hex = validHexColor(row.hexColor ?? row.hex ?? row.color ?? row.colour ?? '');
+    const hex = validHexColor(row.hexColor ?? row.hex ?? row.color ?? row.colour ?? row.colorHex ?? row['Hex Code'] ?? row['Color Hex'] ?? '');
     if (hex) newFixColors[name] = hex;
   });
 
-  // Keep local colors only for legacy Apps Script responses that don't provide fixedRows.
-  if (!Array.isArray(payload) && Array.isArray(payload.fixedRows)) {
-    S.colors = {dyn: newDynColors, fix: newFixColors};
-  } else {
-    S.colors = {dyn: newDynColors, fix: S.colors?.fix || {}};
-  }
+  // If fixed color data is provided, replace the cached map (including clearing removed colors).
+  // Otherwise retain the previous fixed colors while using the freshly synced dynamic colors.
+  const hasFixedColorRows = !!(payload && !Array.isArray(payload) &&
+    (Array.isArray(payload.fixedRows) || Array.isArray(payload.fixRows) || Array.isArray(payload.fixed) ||
+     (Array.isArray(payload.rows) && payload.rows.some(row => row &&
+       (String(row.type || row.kind || '').toLowerCase() === 'fixed' || row.isFixed === true)))));
+  S.colors = {dyn: newDynColors, fix: hasFixedColorRows ? newFixColors : (S.colors?.fix || {})};
 
   S.dyn = newDyn;
   S.kills = newKills;
