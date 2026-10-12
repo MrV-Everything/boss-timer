@@ -155,6 +155,24 @@ tbody tr:hover{background:var(--bg2)}
 .url-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace}
 .url-input:focus{outline:none;border-color:var(--accent)}
 
+/* COPY POPUP */
+.copy-popup{
+  position:fixed;z-index:999;
+  background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.55);
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--fg);white-space:nowrap;
+  pointer-events:auto;
+}
+.copy-popup .cp-text{font-family:'IBM Plex Mono',monospace;color:var(--fg2)}
+.copy-popup .cp-btn{
+  background:var(--accent);color:#000;border:none;border-radius:5px;
+  padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;
+  transition:opacity .15s;
+}
+.copy-popup .cp-btn:hover{opacity:.85}
+.copy-popup .cp-btn.copied{background:#4caf50}
+
 /* ALERT SETTINGS PANEL */
 .alert-panel{
   position:fixed;top:60px;right:12px;z-index:100;
@@ -556,6 +574,62 @@ function render(){
     </tr>`;
   }).join('');
 }
+
+// ── COPY POPUP ───────────────────────────────────────────────────
+let _copyPopup = null;
+function closeCopyPopup(){
+  if(_copyPopup){ _copyPopup.remove(); _copyPopup=null; }
+}
+function showCopyPopup(e, name, resp){
+  closeCopyPopup();
+  const fmt = new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+  const text = `${name} - ${fmt.format(resp)}`;
+
+  const pop = document.createElement('div');
+  pop.className = 'copy-popup';
+  pop.innerHTML = `<span class="cp-text">${text}</span><button class="cp-btn">Copy</button>`;
+  document.body.appendChild(pop);
+  _copyPopup = pop;
+
+  // position near click, keep inside viewport
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let x = e.clientX + 8, y = e.clientY + 8;
+  pop.style.visibility = 'hidden';
+  pop.style.left = x+'px'; pop.style.top = y+'px';
+  requestAnimationFrame(()=>{
+    const r = pop.getBoundingClientRect();
+    if(x + r.width  > vw - 8) x = vw - r.width  - 8;
+    if(y + r.height > vh - 8) y = vh - r.height - 8;
+    pop.style.left = x+'px'; pop.style.top = y+'px';
+    pop.style.visibility = '';
+  });
+
+  pop.querySelector('.cp-btn').addEventListener('click', async ev=>{
+    ev.stopPropagation();
+    try{ await navigator.clipboard.writeText(text); }catch{
+      const ta=document.createElement('textarea');
+      ta.value=text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    pop.querySelector('.cp-btn').textContent='✓ Copied';
+    pop.querySelector('.cp-btn').classList.add('copied');
+    setTimeout(closeCopyPopup, 1200);
+  });
+}
+
+document.addEventListener('click', e=>{
+  if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
+});
+
+document.getElementById('tbody').addEventListener('click', e=>{
+  const tr = e.target.closest('tr');
+  if(!tr || tr.classList.contains('empty')) return;
+  const t = Number(tr.dataset.t);
+  if(!t) return;
+  const name = tr.querySelector('.boss-name')?.textContent.replace('📌','').trim();
+  if(!name) return;
+  showCopyPopup(e, name, new Date(t));
+});
 
 // ── KILL MODAL ───────────────────────────────────────────────────
 let mTarget=null;
