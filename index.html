@@ -1082,8 +1082,18 @@ function parseSheetDate(value) {
   return d.getTime();
 }
 
+// Parse schedule string "1,19:00 | 3,21:00" into [{d:1,h:19,m:0},{d:3,h:21,m:0}]
+function parseScheduleStr(str) {
+  if (!str) return [];
+  return String(str).split('|').map(s => s.trim()).filter(Boolean).map(part => {
+    const m = part.match(/^(\d+)\s*,\s*(\d+):(\d+)$/);
+    if (!m) return null;
+    return { d: Number(m[1]), h: Number(m[2]), m: Number(m[3]) };
+  }).filter(Boolean);
+}
+
 function syncFromGAS(payload) {
-  // Supports the updated {success:true, rows:[...]} response and legacy arrays.
+  // Supports the updated {success:true, rows:[...], fixRows:[...]} response and legacy arrays.
   if (payload && payload.success === false) {
     throw new Error(payload.error || 'Google Apps Script returned an error');
   }
@@ -1099,44 +1109,62 @@ function syncFromGAS(payload) {
     if (!name) return;
 
     const parsedHours = Number(row.hours);
-    // Use the Sheet's +Hrs when present; otherwise preserve an existing/default value.
     const oldBoss = S.dyn.find(b => b.name.toLowerCase() === name.toLowerCase());
     const defaultBoss = DEFAULT_DYN.find(b => b.name.toLowerCase() === name.toLowerCase());
     const hours = Number.isFinite(parsedHours) && row.hours !== '' && row.hours !== null
       ? parsedHours
       : (oldBoss ? oldBoss.hrs : (defaultBoss ? defaultBoss.hrs : 24));
 
-    // Prefer the location synced from Sheet. If an older Apps Script deployment
-    // does not return location yet, preserve the current/default location instead
-    // of replacing it with an empty string.
     const sheetLocation = row.location == null ? '' : String(row.location).trim();
     const location = sheetLocation || (oldBoss && oldBoss.loc) || (defaultBoss && defaultBoss.loc) || '';
 
-    // Preserve locally-set color dot across sheet syncs
-    const existingColor = (oldBoss && oldBoss.color) || '';
+    // Sheet color takes priority; fall back to existing local color
+    const sheetColor = (row.color != null ? String(row.color).trim() : '');
+    const color = sheetColor || (oldBoss && oldBoss.color) || '';
 
-    newDyn.push({
-      name,
-      loc: location,
-      hrs: hours,
-      color: existingColor,
-    });
+    newDyn.push({ name, loc: location, hrs: hours, color });
 
     const killedMs = parseSheetDate(row.killed);
     if (killedMs !== null && Number.isFinite(killedMs)) newKills[name] = killedMs;
   });
 
-  // The Google Sheet is the source of truth for Dynamic Bosses and their kill times.
-  // Fixed Bosses remain untouched.
   S.dyn = newDyn;
   S.kills = newKills;
+
+  // Sync fixed bosses from fixRows if present
+  const fixRows = payload && Array.isArray(payload.fixRows) ? payload.fixRows : null;
+  if (fixRows) {
+    fixRows.forEach(fr => {
+      if (!fr || !fr.name) return;
+      const name = String(fr.name).trim();
+      if (!name) return;
+      const existing = S.fix.find(f => f.name.toLowerCase() === name.toLowerCase());
+      const sheetColor = (fr.color != null ? String(fr.color).trim() : '');
+      const color = sheetColor || (existing && existing.color) || '';
+      const schedule = parseScheduleStr(fr.schedule);
+      if (existing) {
+        existing.color = color;
+        if (schedule.length) existing.times = schedule;
+        if (fr.location != null && String(fr.location).trim()) existing.loc = String(fr.location).trim();
+      } else {
+        S.fix.push({
+          name,
+          loc: fr.location ? String(fr.location).trim() : '',
+          times: schedule,
+          color,
+        });
+      }
+    });
+  }
+
   save();
   render();
   if (document.getElementById('tab-dyn') && !document.getElementById('tab-dyn').hidden) renderDyn();
 
   lastSheetSync = Date.now();
   const status = document.getElementById('syncStatus');
-  status.textContent = `✓ Synced ${newDyn.length} bosses · ${new Date().toLocaleTimeString('en-PH')}`;
+  const fixCount = fixRows ? fixRows.length : 0;
+  status.textContent = `✓ Synced ${newDyn.length} dyn · ${fixCount} fix · ${new Date().toLocaleTimeString('en-PH')}`;
   status.style.color = 'var(--alive)';
 }
 
