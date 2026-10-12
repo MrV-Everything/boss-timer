@@ -155,6 +155,9 @@ tbody tr:hover{background:var(--bg2)}
 .url-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace}
 .url-input:focus{outline:none;border-color:var(--accent)}
 
+/* ROW SELECTION (mobile first-tap) */
+tr.row-selected td{background:rgba(232,160,48,.12)!important}
+
 /* COPY POPUP */
 .copy-popup{
   position:fixed;z-index:999;
@@ -619,6 +622,13 @@ function showCopyPopup(e, name, resp){
   });
 }
 
+const isTouchDevice = () => window.matchMedia('(hover:none)').matches;
+let _selectedRow = null;
+
+function clearRowSelection(){
+  if(_selectedRow){ _selectedRow.classList.remove('row-selected'); _selectedRow=null; }
+}
+
 function handleRowTap(e){
   const tr = e.target.closest('tr');
   if(!tr || tr.classList.contains('empty')) return;
@@ -626,19 +636,41 @@ function handleRowTap(e){
   if(!t) return;
   const name = tr.querySelector('.boss-name')?.textContent.replace('📌','').trim();
   if(!name) return;
+
+  if(isTouchDevice()){
+    // touch: first tap = select, second tap on same row = show popup
+    if(_selectedRow === tr){
+      e.stopPropagation();
+      if(e.cancelable) e.preventDefault();
+      clearRowSelection();
+      showCopyPopup(e, name, new Date(t));
+    } else {
+      clearRowSelection();
+      _selectedRow = tr;
+      tr.classList.add('row-selected');
+    }
+    return;
+  }
+
+  // mouse: single click = show popup
   e.stopPropagation();
-  if(e.cancelable) e.preventDefault(); // prevent ghost click on mobile
   showCopyPopup(e, name, new Date(t));
 }
-document.getElementById('tbody').addEventListener('click', handleRowTap);
-document.getElementById('tbody').addEventListener('touchend', handleRowTap, {passive:false});
+document.getElementById('tbody').addEventListener('click', e=>{
+  if(!isTouchDevice()) handleRowTap(e);
+});
+document.getElementById('tbody').addEventListener('touchend', e=>{
+  if(isTouchDevice()) handleRowTap(e);
+}, {passive:false});
 
 // dismiss on outside click/tap
 document.addEventListener('click', e=>{
   if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
+  if(_selectedRow && !_selectedRow.contains(e.target)){ clearRowSelection(); }
 });
 document.addEventListener('touchend', e=>{
   if(_copyPopup && !_copyPopup.contains(e.target)) closeCopyPopup();
+  if(_selectedRow && !_selectedRow.contains(e.target)){ clearRowSelection(); }
 });
 
 // ── KILL MODAL ───────────────────────────────────────────────────
