@@ -128,10 +128,11 @@ tbody tr:hover{background:var(--bg2)}
 .panel p{margin:0 0 10px;font-size:12px;color:var(--fg2)}
 .list{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;margin-bottom:10px}
 
-/* dyn row: name | loc | hrs | killed | kill-btn | del */
-.dr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 52px minmax(0,1.3fr) 46px 30px;gap:5px;align-items:center}
-/* fix row: name | loc | schedule | del */
-.fr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.8fr) 30px;gap:5px;align-items:center}
+/* dyn row: name | loc | hrs | killed | kill-btn | color+clear | del */
+.dr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 52px minmax(0,1.3fr) 46px auto 30px;gap:5px;align-items:center}
+.color-cell{display:flex;align-items:center;gap:3px}
+/* fix row: name | loc | schedule | color+clear | del */
+.fr{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.8fr) auto 30px;gap:5px;align-items:center}
 
 .ei{background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:5px 8px;border-radius:5px;font-size:12px;font-family:'Inter',sans-serif;width:100%}
 .ei:focus{outline:none;border-color:var(--accent)}
@@ -154,6 +155,10 @@ tbody tr:hover{background:var(--bg2)}
 .share-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .url-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace}
 .url-input:focus{outline:none;border-color:var(--accent)}
+
+/* BOSS COLOR DOT */
+.boss-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;vertical-align:middle;flex-shrink:0}
+.ei-color{width:28px;height:28px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:none}
 
 /* ROW SELECTION (mobile first-tap) */
 tr.row-selected td{background:rgba(232,160,48,.12)!important}
@@ -276,7 +281,7 @@ tr.row-selected td{background:rgba(232,160,48,.12)!important}
       <button class="btn" id="syncBtn" style="display:flex;align-items:center;gap:5px">🔄 Sync from Sheet</button>
       <span style="font-size:11px;color:var(--fg2)" id="syncStatus"></span>
     </div>
-    <div class="dr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Hrs</span><span>Killed / Respawns</span><span></span><span></span></div>
+    <div class="dr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Hrs</span><span>Killed / Respawns</span><span></span><span>🎨</span><span></span></div>
     <div class="list" id="dynList"></div>
     <div class="act">
       <button class="btn" id="addDyn">+ Add</button>
@@ -291,7 +296,7 @@ tr.row-selected td{background:rgba(232,160,48,.12)!important}
   <div class="panel">
     <h2>Fixed Bosses</h2>
     <p>Weekly schedule. Day: 0=Sun 1=Mon … 6=Sat. Format: <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">day,H:MM</code>. Multiple: <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">0,19:00 | 3,21:00</code></p>
-    <div class="fr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Schedule</span><span></span></div>
+    <div class="fr hdr" style="margin-bottom:4px"><span>Name</span><span>Location</span><span>Schedule</span><span>🎨</span><span></span></div>
     <div class="list" id="fixList"></div>
     <div class="act">
       <button class="btn" id="addFix">+ Add</button>
@@ -536,14 +541,14 @@ function render(){
     S.dyn.forEach(b=>{
       const kt=S.kills[b.name]; if(!kt) return;
       const resp=new Date(kt+b.hrs*3600000);
-      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:true});
+      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:true,color:b.color||''});
     });
   }
 
   S.fix.forEach(b=>{
     b.sch.forEach(s=>{
       const resp=nextFixed(s.d,s.h,s.m);
-      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:false});
+      rows.push({name:b.name,loc:b.loc||'',resp,diff:resp-now,isDyn:false,color:b.color||''});
     });
   });
 
@@ -567,11 +572,12 @@ function render(){
     return;
   }
 
-  tbody.innerHTML=filtered.map(({name,loc,resp,diff,isDyn})=>{
+  tbody.innerHTML=filtered.map(({name,loc,resp,diff,isDyn,color})=>{
     const pinIcon=isDyn?'':'<span class="pin-badge">📌</span>';
+    const dot=color?`<span class="boss-dot" style="background:${color}"></span>`:'';
     const isRecentFixedSpawn=!isDyn && diff<=0 && diff>=-20*60*1000;
     return `<tr class="${rowCls(diff)}${isRecentFixedSpawn?' row-spawned':''}" data-t="${resp.getTime()}" data-dyn="${isDyn?'1':'0'}">
-      <td><div class="boss-name">${pinIcon}${name}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
+      <td><div class="boss-name">${pinIcon}${name}${dot}</div>${loc?`<div class="boss-loc">📍 ${loc}</div>`:''}</td>
       <td class="cd"><span class="cd-value ${countdownClass(diff)}">${countdownText(diff)}</span></td>
       <td class="spawn-time">${fmtDate(resp)}</td>
     </tr>`;
@@ -703,9 +709,21 @@ function renderDyn(){
       <input class="ei ei-n" data-f="hrs" type="number" value="${b.hrs}" min="1">
       <input class="ei" data-f="killed" type="datetime-local" value="${kt?toLocalDT(kt):''}" title="Killed / Respawns time" style="font-family:'IBM Plex Mono',monospace;font-size:11px">
       <button class="kill-btn" data-kb="${b.name}" title="Set kill time">☠ Kill</button>
+      <div class="color-cell">
+        <input class="ei-color" data-f="color" type="color" value="${b.color||'#58a6ff'}" title="Set color dot">
+        ${b.color?`<button class="del" data-clear-color style="font-size:9px;padding:2px 4px" title="Clear color">✕</button>`:''}
+      </div>
       <button class="del" data-i="${i}">✕</button>`;
     list.appendChild(row);
     row.querySelector('[data-kb]').addEventListener('click', e=>openModal(e.currentTarget.dataset.kb));
+    row.querySelector('[data-f=color]').addEventListener('input', e=>{ e.currentTarget.dataset.picked='1'; });
+    const clearColorBtn = row.querySelector('[data-clear-color]');
+    if(clearColorBtn) clearColorBtn.addEventListener('click', ()=>{
+      const colorInput = row.querySelector('[data-f=color]');
+      colorInput.dataset.cleared='1'; colorInput.dataset.picked='';
+      colorInput.value='#58a6ff';
+      S.dyn[i].color=''; save(); renderDyn(); render();
+    });
     row.querySelector('.del').addEventListener('click',()=>{
       if(!confirm(`Delete "${b.name}"?`)) return;
       S.dyn.splice(i,1);save();renderDyn();
@@ -721,6 +739,8 @@ document.getElementById('saveDyn').addEventListener('click',()=>{
     S.dyn[i].name=row.querySelector('[data-f=name]').value.trim()||S.dyn[i].name;
     S.dyn[i].loc =row.querySelector('[data-f=loc]').value.trim();
     S.dyn[i].hrs =parseFloat(row.querySelector('[data-f=hrs]').value)||S.dyn[i].hrs;
+    const colorEl=row.querySelector('[data-f=color]');
+    if(colorEl) S.dyn[i].color = colorEl.dataset.cleared==='1' ? '' : (colorEl.dataset.picked==='1' ? colorEl.value : (S.dyn[i].color||''));
     const kv=row.querySelector('[data-f=killed]').value;
     if(kv) S.kills[S.dyn[i].name]=new Date(kv).getTime();
     else delete S.kills[S.dyn[i].name];
@@ -739,8 +759,20 @@ function renderFix(){
       <input class="ei" data-f="name" value="${b.name}" placeholder="Name">
       <input class="ei" data-f="loc"  value="${b.loc||''}" placeholder="Location">
       <input class="ei" data-f="sch"  value="${schStr}" placeholder="0,19:00 | 3,21:00">
+      <div class="color-cell">
+        <input class="ei-color" data-f="color" type="color" value="${b.color||'#58a6ff'}" title="Set color dot">
+        ${b.color?`<button class="del" data-clear-color style="font-size:9px;padding:2px 4px" title="Clear color">✕</button>`:''}
+      </div>
       <button class="del" data-i="${i}">✕</button>`;
     list.appendChild(row);
+    row.querySelector('[data-f=color]').addEventListener('input', e=>{ e.currentTarget.dataset.picked='1'; });
+    const clearFixColorBtn = row.querySelector('[data-clear-color]');
+    if(clearFixColorBtn) clearFixColorBtn.addEventListener('click', ()=>{
+      const colorInput = row.querySelector('[data-f=color]');
+      colorInput.dataset.cleared='1'; colorInput.dataset.picked='';
+      colorInput.value='#58a6ff';
+      S.fix[i].color=''; save(); renderFix(); render();
+    });
     row.querySelector('.del').addEventListener('click',()=>{
       if(!confirm(`Delete "${b.name}"?`)) return;
       S.fix.splice(i,1);save();renderFix();
@@ -755,6 +787,8 @@ document.getElementById('saveFix').addEventListener('click',()=>{
     if(!S.fix[i]) return;
     S.fix[i].name=row.querySelector('[data-f=name]').value.trim()||S.fix[i].name;
     S.fix[i].loc =row.querySelector('[data-f=loc]').value.trim();
+    const fixColorEl=row.querySelector('[data-f=color]');
+    if(fixColorEl) S.fix[i].color = fixColorEl.dataset.cleared==='1' ? '' : (fixColorEl.dataset.picked==='1' ? fixColorEl.value : (S.fix[i].color||''));
     const parts=row.querySelector('[data-f=sch]').value.split('|').map(s=>s.trim()).filter(Boolean);
     const sch=parts.map(p=>{const m=p.match(/^(\d),(\d+):(\d+)$/);return m?{d:+m[1],h:+m[2],m:+m[3]}:null}).filter(Boolean);
     if(sch.length) S.fix[i].sch=sch;
@@ -1078,10 +1112,14 @@ function syncFromGAS(payload) {
     const sheetLocation = row.location == null ? '' : String(row.location).trim();
     const location = sheetLocation || (oldBoss && oldBoss.loc) || (defaultBoss && defaultBoss.loc) || '';
 
+    // Preserve locally-set color dot across sheet syncs
+    const existingColor = (oldBoss && oldBoss.color) || '';
+
     newDyn.push({
       name,
       loc: location,
-      hrs: hours
+      hrs: hours,
+      color: existingColor,
     });
 
     const killedMs = parseSheetDate(row.killed);
