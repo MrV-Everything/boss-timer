@@ -154,6 +154,30 @@ tbody tr:hover{background:var(--bg2)}
 .share-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .url-input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:6px;font-size:11px;font-family:'IBM Plex Mono',monospace}
 .url-input:focus{outline:none;border-color:var(--accent)}
+
+/* ALERT SETTINGS PANEL */
+.alert-panel{
+  position:fixed;top:60px;right:12px;z-index:100;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;width:260px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
+.alert-panel h3{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--fg)}
+.alert-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.alert-row label{font-size:12px;color:var(--fg2);flex:1}
+.toggle-wrap{display:flex;align-items:center;gap:6px}
+.toggle{position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border);border-radius:18px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;width:12px;height:12px;left:2px;top:2px;background:var(--fg2);border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--accent);border-color:var(--accent)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(16px);background:#000}
+.alert-mins{width:46px;background:var(--bg3);border:1px solid var(--border);color:var(--fg);padding:3px 6px;border-radius:5px;font-size:12px;font-family:'IBM Plex Mono',monospace;text-align:center}
+.alert-mins:focus{outline:none;border-color:var(--accent)}
+.notif-status{font-size:10px;color:var(--fg2);margin-top:2px}
+.notif-status.ok{color:var(--alive)}
+.notif-status.warn{color:var(--soon)}
+.btn-notif-test{margin-top:8px;width:100%;font-size:11px;padding:4px 8px}
+.alert-sep{border:none;border-top:1px solid var(--border);margin:8px 0}
 </style>
 </head>
 <body>
@@ -169,7 +193,36 @@ tbody tr:hover{background:var(--bg2)}
   <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
   <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
   <button class="btn" id="filterAlive" title="Show alive">🟢 Alive</button>
+  <button class="btn" id="alertSettingsBtn" title="Alert settings">🔔</button>
   <button class="btn btn-accent" id="adminAccessBtn" type="button">Admin Login</button>
+</div>
+
+<!-- ALERT SETTINGS PANEL -->
+<div id="alertPanel" hidden class="alert-panel">
+  <h3>🔔 Boss Alerts</h3>
+  <div class="alert-row">
+    <label>Sound alerts</label>
+    <label class="toggle"><input type="checkbox" id="alertSound" checked><span class="toggle-slider"></span></label>
+  </div>
+  <div class="alert-row">
+    <label>Browser notifications</label>
+    <label class="toggle"><input type="checkbox" id="alertNotif"><span class="toggle-slider"></span></label>
+  </div>
+  <div id="notifStatus" class="notif-status"></div>
+  <hr class="alert-sep">
+  <div class="alert-row">
+    <label>Warn at (mins before)</label>
+    <input class="alert-mins" id="alertMins1" type="number" value="10" min="1" max="120">
+  </div>
+  <div class="alert-row">
+    <label>Warn again at (mins before)</label>
+    <input class="alert-mins" id="alertMins2" type="number" value="5" min="1" max="60">
+  </div>
+  <div class="alert-row">
+    <label>Alert on spawn (0 mins)</label>
+    <label class="toggle"><input type="checkbox" id="alertOnSpawn" checked><span class="toggle-slider"></span></label>
+  </div>
+  <button class="btn btn-notif-test" id="alertTestBtn">🔊 Test sound</button>
 </div>
 
 <div class="tabs">
@@ -623,8 +676,168 @@ document.getElementById('copyBtn').addEventListener('click',()=>{
   });
 });
 
+// ── ALERTS ───────────────────────────────────────────────────────
+// fired set: key = "bossName_thresholdMs" so each threshold fires once per spawn cycle
+const firedAlerts = new Set();
+
+// Web Audio beep — no external file needed
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playBeep(freq=880, dur=0.18, vol=0.5, type='sine'){
+  try{
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  }catch{}
+}
+function playAlert(level){ // level: 'warn1' | 'warn2' | 'spawn'
+  if(level==='spawn'){
+    // three ascending tones
+    playBeep(660,0.15,0.5);
+    setTimeout(()=>playBeep(880,0.15,0.5),180);
+    setTimeout(()=>playBeep(1100,0.25,0.6),360);
+  } else if(level==='warn1'){
+    playBeep(660,0.2,0.4);
+    setTimeout(()=>playBeep(660,0.2,0.4),260);
+  } else {
+    // warn2 — single urgent beep
+    playBeep(880,0.25,0.5,'square');
+  }
+}
+
+function alertSettingsGet(){
+  return {
+    sound: document.getElementById('alertSound').checked,
+    notif: document.getElementById('alertNotif').checked,
+    mins1: Math.max(1, parseInt(document.getElementById('alertMins1').value)||10),
+    mins2: Math.max(1, parseInt(document.getElementById('alertMins2').value)||5),
+    onSpawn: document.getElementById('alertOnSpawn').checked,
+  };
+}
+
+async function requestNotifPermission(){
+  if(!('Notification' in window)) return 'unsupported';
+  if(Notification.permission === 'granted') return 'granted';
+  if(Notification.permission === 'denied') return 'denied';
+  const result = await Notification.requestPermission();
+  return result;
+}
+
+function sendNotif(title, body){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try{
+    new Notification(title, {body, icon:'', silent:true, tag: title});
+  }catch{}
+}
+
+function updateNotifStatus(){
+  const el = document.getElementById('notifStatus');
+  if(!('Notification' in window)){
+    el.textContent = '⚠ Browser notifications not supported';
+    el.className = 'notif-status warn';
+    return;
+  }
+  if(Notification.permission === 'granted'){
+    el.textContent = '✓ Notifications allowed';
+    el.className = 'notif-status ok';
+  } else if(Notification.permission === 'denied'){
+    el.textContent = '✗ Notifications blocked — allow in browser settings';
+    el.className = 'notif-status warn';
+  } else {
+    el.textContent = 'Click the toggle to request permission';
+    el.className = 'notif-status';
+  }
+}
+
+document.getElementById('alertNotif').addEventListener('change', async function(){
+  if(this.checked){
+    const result = await requestNotifPermission();
+    if(result !== 'granted'){
+      this.checked = false;
+    }
+  }
+  updateNotifStatus();
+});
+
+document.getElementById('alertSettingsBtn').addEventListener('click', e=>{
+  const panel = document.getElementById('alertPanel');
+  panel.hidden = !panel.hidden;
+  if(!panel.hidden) updateNotifStatus();
+  e.stopPropagation();
+});
+document.addEventListener('click', e=>{
+  const panel = document.getElementById('alertPanel');
+  if(!panel.hidden && !panel.contains(e.target) && e.target.id !== 'alertSettingsBtn'){
+    panel.hidden = true;
+  }
+});
+document.getElementById('alertTestBtn').addEventListener('click', ()=>{
+  playAlert('warn1');
+  const cfg = alertSettingsGet();
+  if(cfg.notif) sendNotif('🔔 Boss Alert Test', 'Notifications are working!');
+});
+
+function checkAlerts(rows){
+  const cfg = alertSettingsGet();
+  if(!cfg.sound && !cfg.notif) return;
+  const thresholds = [];
+  thresholds.push({key:'w1', ms: cfg.mins1*60*1000, level:'warn1', label:`${cfg.mins1}m`});
+  thresholds.push({key:'w2', ms: cfg.mins2*60*1000, level:'warn2', label:`${cfg.mins2}m`});
+  if(cfg.onSpawn) thresholds.push({key:'sp', ms:0, level:'spawn', label:'NOW'});
+
+  rows.forEach(({name, diff, resp})=>{
+    // clear fired alerts for this boss if it's been re-killed (resp changed)
+    // key includes resp timestamp so a new kill cycle clears old fired entries
+    const cycleKey = `${name}_${resp.getTime()}`;
+
+    thresholds.forEach(({key, ms, level, label})=>{
+      const fKey = `${cycleKey}_${key}`;
+      // fire when diff crosses below the threshold (and is above -60s to avoid re-fire on expired)
+      const inWindow = ms === 0
+        ? (diff <= 0 && diff > -60000)
+        : (diff > 0 && diff <= ms);
+      if(inWindow && !firedAlerts.has(fKey)){
+        firedAlerts.add(fKey);
+        if(cfg.sound) playAlert(level);
+        if(cfg.notif){
+          const title = ms === 0 ? `⚔️ ${name} SPAWNED!` : `🔔 ${name} in ${label}`;
+          sendNotif(title, ms === 0 ? 'Boss has spawned!' : `Spawns in ${label}`);
+        }
+      }
+      // prune fired key once well past (diff < -120s) so memory doesn't grow forever
+      if(diff < -120000) firedAlerts.delete(fKey);
+    });
+  });
+}
+
 // ── TICKER ───────────────────────────────────────────────────────
 function tick(){
+  // build rows same logic as render() but lightweight — just name/diff/resp
+  const now = Date.now(), alertRows = [];
+  if(!isSharedView){
+    S.dyn.forEach(b=>{
+      const kt=S.kills[b.name]; if(!kt) return;
+      const resp=new Date(kt+b.hrs*3600000);
+      alertRows.push({name:b.name, diff:resp-now, resp});
+    });
+    S.fix.forEach(b=>{
+      b.sch.forEach(s=>{
+        const resp=nextFixed(s.d,s.h,s.m);
+        alertRows.push({name:b.name, diff:resp-now, resp});
+      });
+    });
+    checkAlerts(alertRows);
+  }
   render();
   setTimeout(tick,1000);
 }
