@@ -192,7 +192,7 @@ tbody tr:hover{background:var(--bg2)}
   </div>
   <input class="search" id="search" placeholder="Search boss…" autocomplete="off">
   <button class="btn" id="filterPin" title="Toggle pinned/all">📌 Fixed only</button>
-  <button class="btn" id="filterAlive" title="Show alive">🟢 Alive</button>
+  <button class="btn" id="filterAlive" title="Show dynamic bosses only">⚔️ Dynamic Only</button>
   <button class="btn" id="alertSettingsBtn" title="Alert settings">🔔</button>
   <button class="btn btn-accent" id="adminAccessBtn" type="button">Admin Login</button>
 </div>
@@ -534,7 +534,7 @@ function render(){
   const q=searchQ;
   const filtered=rows.filter(r=>{
     if(q && !r.name.toLowerCase().includes(q) && !r.loc.toLowerCase().includes(q)) return false;
-    if(filterAlive && r.diff>0) return false;
+    if(filterAlive && !r.isDyn) return false; // Dynamic Only filter
     return true;
   });
 
@@ -700,18 +700,33 @@ function playBeep(freq=880, dur=0.18, vol=0.5, type='sine'){
     osc.stop(ctx.currentTime + dur);
   }catch{}
 }
+// Play a repeating pattern for ~5 seconds total
 function playAlert(level){ // level: 'warn1' | 'warn2' | 'spawn'
+  const TOTAL = 5000;
   if(level==='spawn'){
-    // three ascending tones
-    playBeep(660,0.15,0.5);
-    setTimeout(()=>playBeep(880,0.15,0.5),180);
-    setTimeout(()=>playBeep(1100,0.25,0.6),360);
+    // ascending 3-tone chime, repeating every 800ms
+    const cycleMs = 800;
+    const cycles = Math.ceil(TOTAL / cycleMs);
+    for(let c=0;c<cycles;c++){
+      setTimeout(()=>playBeep(660,0.18,0.5,'sine'),  c*cycleMs);
+      setTimeout(()=>playBeep(880,0.18,0.5,'sine'),  c*cycleMs+200);
+      setTimeout(()=>playBeep(1100,0.25,0.6,'sine'), c*cycleMs+400);
+    }
   } else if(level==='warn1'){
-    playBeep(660,0.2,0.4);
-    setTimeout(()=>playBeep(660,0.2,0.4),260);
+    // double beep every 600ms
+    const cycleMs = 600;
+    const cycles = Math.ceil(TOTAL / cycleMs);
+    for(let c=0;c<cycles;c++){
+      setTimeout(()=>playBeep(660,0.18,0.45,'sine'), c*cycleMs);
+      setTimeout(()=>playBeep(660,0.18,0.45,'sine'), c*cycleMs+220);
+    }
   } else {
-    // warn2 — single urgent beep
-    playBeep(880,0.25,0.5,'square');
+    // warn2 — urgent square pulse every 400ms
+    const cycleMs = 400;
+    const cycles = Math.ceil(TOTAL / cycleMs);
+    for(let c=0;c<cycles;c++){
+      setTimeout(()=>playBeep(880,0.22,0.5,'square'), c*cycleMs);
+    }
   }
 }
 
@@ -983,9 +998,10 @@ const isSharedView = params.get('v') === '1' || location.hash.includes('v=1');
 function applyAccessMode() {
   const adminTabs = document.querySelectorAll('.tab[data-tab="dyn"],.tab[data-tab="fix"],.tab[data-tab="share"]');
   adminTabs.forEach(el => el.hidden = !isAdmin);
-  document.getElementById('search').hidden = !isAdmin;
-  document.getElementById('filterPin').hidden = !isAdmin;
-  document.getElementById('filterAlive').hidden = !isAdmin;
+  // search + filters always visible (non-admin can still filter the timer)
+  document.getElementById('search').hidden = false;
+  document.getElementById('filterPin').hidden = false;
+  document.getElementById('filterAlive').hidden = false;
 
   const accessBtn = document.getElementById('adminAccessBtn');
   accessBtn.textContent = isAdmin ? 'Admin Logout' : 'Admin Login';
