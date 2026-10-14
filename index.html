@@ -1076,6 +1076,28 @@ function parseSheetDate(value) {
   return d.getTime();
 }
 
+function parseWeeklySpawnTime(value) {
+  if (value === null || value === undefined) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const dayMatch = s.match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/i);
+  if (!dayMatch) return null;
+  const dayMap = {sunday:0,monday:1,tuesday:2,wednesday:3,thursday:4,friday:5,saturday:6};
+  // Supports formats like "Sunday 9:00 PM", "Sunday 15:00", and "Sunday 19:00".
+  const timeMatch = s.match(/\b(\d{1,2}):(\d{2})\s*(AM|PM)?\b/i);
+  if (!timeMatch) return null;
+  let h = Number(timeMatch[1]);
+  const m = Number(timeMatch[2]);
+  const ap = (timeMatch[3] || '').toUpperCase();
+  if (m > 59 || h > 23 || (!ap && h > 23)) return null;
+  if (ap) {
+    if (h < 1 || h > 12) return null;
+    if (ap === 'AM' && h === 12) h = 0;
+    if (ap === 'PM' && h !== 12) h += 12;
+  }
+  return {d:dayMap[dayMatch[1].toLowerCase()], h, m};
+}
+
 function syncFromGAS(payload) {
   // Supports the current {success:true, rows:[dynamic], fixedRows:[fixed]} response and legacy arrays.
   if (payload && payload.success === false) {
@@ -1128,13 +1150,28 @@ function syncFromGAS(payload) {
       ));
     }
   }
+  const sheetFixed = [];
   fixedRows.forEach(row => {
     if (!row || !row.name) return;
     const name = String(row.name).trim();
     if (!name) return;
+    const location = row.location == null ? '' : String(row.location).trim();
     const hex = validHexColor(row.hexColor ?? row.hex ?? row.color ?? row.colour ?? row.colorHex ?? row['Hex Code'] ?? row['Color Hex'] ?? '');
     if (hex) newFixColors[name] = hex;
+    const schedule = parseWeeklySpawnTime(row.spawnTime ?? row.spawn ?? row.schedule ?? row['Spawn Time'] ?? '');
+    if (schedule) {
+      let boss = sheetFixed.find(b => b.name.toLowerCase() === name.toLowerCase() && b.loc.toLowerCase() === location.toLowerCase());
+      if (!boss) { boss = {name, loc:location, sch:[]}; sheetFixed.push(boss); }
+      if (!boss.sch.some(x => x.d === schedule.d && x.h === schedule.h && x.m === schedule.m)) boss.sch.push(schedule);
+    }
   });
+
+  // If the Sheet supplies valid fixed schedules, use it as the source of truth.
+  // If the endpoint only returns colors (older Apps Script), preserve local fixed schedules.
+  if (sheetFixed.length) {
+    sheetFixed.forEach(b => b.sch.sort((a,b) => a.d-b.d || a.h-b.h || a.m-b.m));
+    S.fix = sheetFixed;
+  }
 
   // If fixed color data is provided, replace the cached map (including clearing removed colors).
   // Otherwise retain the previous fixed colors while using the freshly synced dynamic colors.
@@ -1153,7 +1190,7 @@ function syncFromGAS(payload) {
   lastSheetSync = Date.now();
   const status = document.getElementById('syncStatus');
   const colorCount = Object.keys(S.colors.dyn || {}).length + Object.keys(S.colors.fix || {}).length;
-  status.textContent = `✓ Synced ${newDyn.length} dynamic bosses${fixedRows.length ? ` · ${fixedRows.length} fixed colors checked` : ''}${colorCount ? ` · ${colorCount} colors loaded` : ''} · ${new Date().toLocaleTimeString('en-PH')}`;
+  status.textContent = `✓ Synced ${newDyn.length} dynamic + ${sheetFixed.length || 0} fixed bosses${fixedRows.length ? ` · ${fixedRows.length} fixed rows checked` : ''}${colorCount ? ` · ${colorCount} colors loaded` : ''} · ${new Date().toLocaleTimeString('en-PH')}`;
   status.style.color = 'var(--alive)';
 }
 async function syncSheet({manual = false} = {}) {
